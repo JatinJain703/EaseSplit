@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const schema = require("schema");
+const schema = mongoose.Schema;
 const objectId = schema.Types.ObjectId;
 
 const User = new schema({
@@ -11,7 +11,7 @@ const User = new schema({
             userId: objectId,
             name: String,
             email: String,
-            personalBalance: Number  // ✅ This is only for non-group expenses
+           personalBalance: { type: Number, default: 0 } // ✅ This is only for non-group expenses
         }
     ],
     groups: [objectId]
@@ -29,7 +29,7 @@ const Groups = new schema({
     ]
 })
 
-const Expenses = ({
+const Expenses = new schema({
     groupId: objectId,
     paidBy: objectId,
     amount: Number,
@@ -40,7 +40,7 @@ const Expenses = ({
     date: { type: Date, default: Date.now }
 })
 
-const Settlement = ({
+const Settlement = new schema({
     groupId: objectId,
     from: objectId,      // who paid
     to: objectId,        // who received
