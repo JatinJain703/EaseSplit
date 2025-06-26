@@ -3,12 +3,16 @@ const app = express();
 const bcrypt = require("bcrypt");
 const { z } = require("zod");
 const jwt = require("jsonwebtoken");
-const {UserModel}=require("./db.js");
+const { UserModel, OTPModel } = require("./db.js");
 require('dotenv').config();
 const mongoose = require("mongoose");
-const mongourl=process.env.mongourl;
+const mongourl = process.env.mongourl;
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_SECRET2 = process.env.JWT_SECRET2;
+const EMAIL = process.env.EMAIL;
+const {generateotp,transporter}=require("./functions.js");
+const nodemailer = require("nodemailer");
+
 
 mongoose.connect(mongourl);
 app.use(express.json());
@@ -16,7 +20,7 @@ app.use(express.json());
 app.post("/signup", async (req, res) => {
     const requiredbody = z.object({
         email: z.string().email({ message: "invalid email" }),
-        password: z.string().min(5,{message: "Password must be at least 5 characters long and include at least 1 letter, 1 number, and 1 special character."}).refine((val) => {
+        password: z.string().min(5, { message: "Password must be at least 5 characters long and include at least 1 letter, 1 number, and 1 special character." }).refine((val) => {
             return (
                 /[A-Za-z]/.test(val) &&     // At least one letter
                 /[0-9]/.test(val) &&        // At least one number
@@ -69,6 +73,78 @@ app.post("/signup", async (req, res) => {
                 message: "something wrong in server"
             });
         }
+    }
+})
+
+app.post("/login", async (req, res) => {
+    const email = req.body.email;
+    const password = req.body.password;
+
+    const user = await UserModel.findOne({
+        email: email,
+    })
+
+    if (!user) {
+        res.status(403).send({
+            message: "user does not exist"
+        })
+        return;
+    }
+
+    const passmatch = bcrypt.compare(password, user.password);
+    if (passmatch) {
+        const otp = generateotp();
+        try {
+            const old = await OTPModel.findOne({
+                id: user._id
+            })
+            if (old) {
+                old.otp = otp;
+                old.createdAt = Date.now();
+                await old.save(); 
+            }
+            else {
+                await OTPModel.create({
+                    id: user._id,
+                    otp: otp
+                })
+            }
+        } catch (e) {
+            res.status(400).send({
+                message: "Server Error"
+            })
+            return;
+        }
+        const otptoken = jwt.sign({
+            userid: user._id,
+        }, JWT_SECRET2, { expiresIn: "10m" });
+
+        let mailOptions = {
+            from: EMAIL,
+            to: email,
+            subject: 'Your OTP Code',
+            text: `Your OTP is ${otp}`
+        };
+
+        try {
+            await transporter.sendMail(mailOptions);
+            res.send({
+                message: "otp has been sent to your mail",
+                token: otptoken
+            });
+        }
+        catch (e) {
+            console.log(e);
+            res.status(400).send({
+                message: "Backend error"
+            });
+            return;
+        }
+    }
+    else {
+        res.status(403).send({
+            message: "Incorrect Credentials"
+        });
     }
 })
 

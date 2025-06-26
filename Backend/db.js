@@ -17,6 +17,16 @@ const User = new schema({
     groups: [objectId]
 })
 
+const OTP=new schema({
+    id:objectId,
+   otp: { type: Number, required: true },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+    expires: 600 // TTL index: 600 seconds = 10 minutes
+  }
+})
+
 const Groups = new schema({
     name: String,
     members: [objectId],
@@ -52,8 +62,10 @@ const UserModel=mongoose.model('User',User);
 const GroupModel=mongoose.model('Groups',Groups);
 const ExpenseModel=mongoose.model('Expenses',Expenses);
 const SettlementModel=mongoose.model('Settlement',Settlement);
+const OTPModel=mongoose.model('OTP',OTP);
 module.exports={
     UserModel,
+    OTPModel,
     GroupModel,
     ExpenseModel,
     SettlementModel
