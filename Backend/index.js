@@ -148,4 +148,32 @@ app.post("/login", async (req, res) => {
     }
 })
 
+app.post("/otp", async (req, res) => {
+    const otptoken = req.body.token;
+    const otp = req.body.otp;
+
+    try {
+        let info = jwt.verify(otptoken, JWT_SECRET2);
+         
+          const user=await OTPModel.findOne({
+             id:info.userid
+          })
+        if (user.otp == otp) {
+    
+            const token = jwt.sign({
+                id: info.userid
+            }, JWT_SECRET);
+
+            res.send({
+                token: token
+            });
+        }
+        else {
+            res.send("invalid otp");
+        }
+    }
+    catch (err) {
+        res.status(401).send("invalid or expired token");
+    }
+})
 app.listen(3000);
