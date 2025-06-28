@@ -378,7 +378,7 @@ app.post("/CreatefriendsExpense", auth, async (req, res) => {
             }
         }
         await ExpenseModel.create({
-            createdby:userid,
+            createdby: userid,
             groupId: null,
             paidBy: paidby,
             amount: amount,
@@ -394,4 +394,87 @@ app.post("/CreatefriendsExpense", auth, async (req, res) => {
         })
     }
 })
+
+app.post("/CreategroupExpense", auth, async (req, res) => {
+    const userid = req.userid;
+    const groupid = req.body.groupid;
+    const paidby = req.body.paidby;
+    const amount = req.body.amount;
+    const description = req.body.description;
+    const splitBetween = req.body.splitBetween;
+
+    try {
+        const group = await GroupModel.findById(groupid);
+        if (!group) {
+            return res.status(404).json({ message: "Group not found" });
+        }
+
+        for (let i = 0; i < splitBetween.length; i++) {
+            const memberId = splitBetween[i].userId;
+            const share = splitBetween[i].share;
+
+            if (memberId === paidby) continue;
+
+            
+            let existingIndex = group.balances.findIndex(b =>
+                b.from.toString() === memberId && b.to.toString() === paidby
+            );
+
+            if (existingIndex !== -1) {
+               
+                group.balances[existingIndex].amount += share;
+            } else {
+                
+                let reverseIndex = group.balances.findIndex(b =>
+                    b.from.toString() === paidby && b.to.toString() === memberId
+                );
+
+                if (reverseIndex !== -1) {
+                    let existingAmount = group.balances[reverseIndex].amount;
+
+                    if (existingAmount > share) {
+                        group.balances[reverseIndex].amount -= share;
+                    } else if (existingAmount < share) {
+                        
+                        group.balances.splice(reverseIndex, 1);
+                        group.balances.push({
+                            from: memberId,
+                            to: paidby,
+                            amount: share - existingAmount
+                        });
+                    } else {
+                     
+                        group.balances.splice(reverseIndex, 1);
+                    }
+                } else {
+                  
+                    group.balances.push({
+                        from: memberId,
+                        to: paidby,
+                        amount: share
+                    });
+                }
+            }
+        }
+
+        await group.save();
+
+        await ExpenseModel.create({
+            createdby: userid,
+            groupId: groupid,
+            paidBy: paidby,
+            amount: amount,
+            description: description,
+            splitBetween: splitBetween
+        });
+
+        res.status(200).json({ message: "Group expense added successfully" });
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).send({ message: "Backend error" });
+    }
+});
+
+
 app.listen(3000);

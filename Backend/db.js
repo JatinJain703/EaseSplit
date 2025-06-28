@@ -33,8 +33,8 @@ const Groups = new schema({
     members: [objectId],
     balances: [
         {
-            from: objectId,  // who owes
-            to: objectId,    // who is owed
+            from: objectId,  //who gives
+            to: objectId,    //receiver
             amount: Number
         }
     ]
