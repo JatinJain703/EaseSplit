@@ -41,6 +41,7 @@ const Groups = new schema({
 })
 
 const Expenses = new schema({
+    createdby:objectId,
     groupId: objectId,
     paidBy: objectId,
     amount: Number,

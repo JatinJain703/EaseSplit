@@ -3,7 +3,7 @@ const app = express();
 const bcrypt = require("bcrypt");
 const { z } = require("zod");
 const jwt = require("jsonwebtoken");
-const { UserModel, OTPModel, GroupModel } = require("./db.js");
+const { UserModel, OTPModel, GroupModel, ExpenseModel } = require("./db.js");
 require('dotenv').config();
 const mongoose = require("mongoose");
 const mongourl = process.env.mongourl;
@@ -292,7 +292,7 @@ app.post("/creategroup", auth, async (req, res) => {
     }
 })
 
-app.post("/createfriend", auth, async (req, res) => {
+app.post("/CreateFriend", auth, async (req, res) => {
     const userid = req.userid;
     const name = req.body.name;
     const email = req.body.email;
@@ -332,11 +332,11 @@ app.post("/createfriend", auth, async (req, res) => {
             })
             await friend.save();
         }
-       else{
-        return res.status(200).json({
-            message: "Already Friend"
-        });
-       }
+        else {
+            return res.status(200).json({
+                message: "Already Friend"
+            });
+        }
         res.status(200).json({
             message: "Friend added successfully"
         });
@@ -348,4 +348,50 @@ app.post("/createfriend", auth, async (req, res) => {
     }
 })
 
+app.post("/CreatefriendsExpense", auth, async (req, res) => {
+    const userid = req.userid;
+    const paidby = req.body.paidby;
+    const amount = req.body.amount;
+    const description = req.body.description;
+    const splitBetween = req.body.splitBetween;
+
+    try {
+        const paiduser = await UserModel.findOne({
+            _id: paidby
+        })
+        for (let i = 0; i < splitBetween.length; i++) {
+            if (paidby != splitBetween[i].userId) {
+                const current = await UserModel.findOne({
+                    _id: splitBetween[i].userId
+                })
+                const friendIndex = paiduser.friends.findIndex(f =>
+                    f.userId.toString() === splitBetween[i].userId.toString()
+                );
+                paiduser.friends[friendIndex].personalBalance += splitBetween[i].share;
+                await paiduser.save();
+
+                const paiduserIndex = current.friends.findIndex(f =>
+                    f.userId.toString() === paiduser._id.toString()
+                );
+                current.friends[paiduserIndex].personalBalance -= splitBetween[i].share;
+                await current.save();
+            }
+        }
+        await ExpenseModel.create({
+            createdby:userid,
+            groupId: null,
+            paidBy: paidby,
+            amount: amount,
+            description: description,
+            splitBetween: splitBetween
+        })
+        res.status(200).send({
+            message: "Expense created successfully"
+        })
+    } catch (e) {
+        res.status(500).send({
+            message: "Backend error"
+        })
+    }
+})
 app.listen(3000);
