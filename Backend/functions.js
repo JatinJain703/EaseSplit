@@ -1,5 +1,6 @@
 const nodemailer = require("nodemailer");
 require('dotenv').config();
+const jwt = require("jsonwebtoken");
 
 const EMAIL = process.env.EMAIL;
 const emailpass = process.env.pass;
@@ -17,21 +18,22 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-function auth(req,res,next)
-{
-    const token=req.headers.token;
-    const user=jwt.verify(token,JWT_SECRET);
-    if(!user)
-    {
-        res.status(400).send({
-            message:"You are not logged in!!"
-        })
-    }
-    else{
-        req.user=user.id;
-        next();
-    }
+function auth(req, res, next) {
+  const token = req.headers.token;
+
+  if (!token) {
+    return res.status(401).json({ message: "Token not provided" });
+  }
+
+  try {
+    const user = jwt.verify(token, JWT_SECRET);
+    req.userid = user.id;
+    next();
+  } catch (err) {
+    return res.status(403).json({ message: "Invalid token" });
+  }
 }
+
 
 // ✅ Export the functions for CommonJS
 module.exports = {

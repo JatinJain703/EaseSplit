@@ -6,9 +6,10 @@ const User = new schema({
     name: String,
     email: { type: String, unique: true },
     password: String,
+    isdummy:{type:Boolean,default:false},
     friends: [
         {
-            userId: objectId,
+            userId: {type:objectId,unique:true},
             name: String,
             email: String,
            personalBalance: { type: Number, default: 0 } // ✅ This is only for non-group expenses

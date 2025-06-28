@@ -3,14 +3,14 @@ const app = express();
 const bcrypt = require("bcrypt");
 const { z } = require("zod");
 const jwt = require("jsonwebtoken");
-const { UserModel, OTPModel } = require("./db.js");
+const { UserModel, OTPModel, GroupModel } = require("./db.js");
 require('dotenv').config();
 const mongoose = require("mongoose");
 const mongourl = process.env.mongourl;
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_SECRET2 = process.env.JWT_SECRET2;
 const EMAIL = process.env.EMAIL;
-const {generateotp,transporter}=require("./functions.js");
+const { generateotp, transporter, auth } = require("./functions.js");
 const nodemailer = require("nodemailer");
 
 
@@ -46,17 +46,26 @@ app.post("/signup", async (req, res) => {
 
     const hashedpassword = await bcrypt.hash(password, 5);
     try {
-        await UserModel.create({
-            name,
-            email,
-            password: hashedpassword
-        })
+        let userdummy;
+        userdummy = await UserModel.findOne({
+            email: email
+        });
 
-        const user = await UserModel.findOne({
-            email: email,
-        })
+        if (userdummy && userdummy.isdummy === true) {
+            userdummy.isdummy = false;
+            userdummy.name=name;
+            userdummy.password=hashedpassword;
+            await userdummy.save();
+        }
+        else if (!userdummy||userdummy.isdummy===false) {
+            userdummy = await UserModel.create({
+                name,
+                email,
+                password: hashedpassword
+            })
+        }
         const token = jwt.sign({
-            id: user._id
+            id: userdummy._id
         }, JWT_SECRET)
         res.json({
             token: token,
@@ -84,7 +93,7 @@ app.post("/login", async (req, res) => {
         email: email,
     })
 
-    if (!user) {
+    if (!user||user.isdummy===true) {
         res.status(403).send({
             message: "user does not exist"
         })
@@ -101,7 +110,7 @@ app.post("/login", async (req, res) => {
             if (old) {
                 old.otp = otp;
                 old.createdAt = Date.now();
-                await old.save(); 
+                await old.save();
             }
             else {
                 await OTPModel.create({
@@ -154,12 +163,12 @@ app.post("/otp", async (req, res) => {
 
     try {
         let info = jwt.verify(otptoken, JWT_SECRET2);
-         
-          const user=await OTPModel.findOne({
-             id:info.userid
-          })
+
+        const user = await OTPModel.findOne({
+            id: info.userid
+        })
         if (user.otp == otp) {
-    
+
             const token = jwt.sign({
                 id: info.userid
             }, JWT_SECRET);
@@ -174,6 +183,113 @@ app.post("/otp", async (req, res) => {
     }
     catch (err) {
         res.status(401).send("invalid or expired token");
+    }
+})
+
+app.post("/creategroup", auth, async (req, res) => {
+    const userid = req.userid;
+    const name = req.body.name;
+    const members = req.body.members;
+    const membersid = [];
+    membersid.push(userid);
+    const availablemembers = [];
+    try {
+
+        const newgroup = await GroupModel.create({
+            name: name,
+            members: membersid
+        })
+
+        const groupid = newgroup._id;
+
+        const currentUser = await UserModel.findById(userid);
+        availablemembers.push({
+            userid: currentUser._id,
+            name: currentUser.name,
+            email: currentUser.email
+        });
+        currentUser.groups.push(groupid);
+        await currentUser.save();
+
+        for (let i = 0; i < members.length; i++) {
+            let friend;
+            try {
+                friend = await UserModel.findOne({
+                    email: members[i].email
+                })
+            }
+            catch (e) {
+                res.status(500).send({
+                    message: "Backend error"
+                })
+                return;
+            }
+            if (friend) {
+                friend.groups.push(groupid);
+                await friend.save();
+                membersid.push(friend._id);
+                availablemembers.push({
+                    userid: friend._id,
+                    name: friend.name,
+                    email: friend.email
+                });
+            }
+            else
+            {
+                friend=await UserModel.create({
+                    name:members[i].name,
+                    email:members[i].email,
+                    isdummy:true
+                })
+                friend.groups.push(groupid);
+                await friend.save();
+                membersid.push(friend._id);
+                availablemembers.push({
+                    userid: friend._id,
+                    name: friend.name,
+                    email: friend.email
+                });
+            }
+        }
+        // Now make each member friends with all others in the group
+        for (let i = 0; i < availablemembers.length; i++) {
+            const userA = availablemembers[i];
+            const dbUserA = await UserModel.findById(userA.userid);
+
+            for (let j = 0; j < availablemembers.length; j++) {
+                if (i === j) continue; // skip self
+
+                const userB = availablemembers[j];
+
+                // Check if already a friend
+                const alreadyFriend = dbUserA.friends.some(f => f.userId.toString() === userB.userid.toString());
+
+                if (!alreadyFriend) {
+                    dbUserA.friends.push({
+                        userId: userB.userid,
+                        name: userB.name,
+                        email: userB.email,
+                        personalBalance: 0
+                    });
+                }
+            }
+
+            await dbUserA.save();
+        }
+
+        newgroup.members = membersid;
+        await newgroup.save();
+
+        res.status(200).json({
+            message: "Group created successfully",
+            groupId: groupid
+        });
+    } catch (e) {
+        console.log(e);
+        res.status(500).send({
+            message: "Backend error while group creation"
+        })
+        return;
     }
 })
 app.listen(3000);
