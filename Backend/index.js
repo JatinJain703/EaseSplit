@@ -53,11 +53,11 @@ app.post("/signup", async (req, res) => {
 
         if (userdummy && userdummy.isdummy === true) {
             userdummy.isdummy = false;
-            userdummy.name=name;
-            userdummy.password=hashedpassword;
+            userdummy.name = name;
+            userdummy.password = hashedpassword;
             await userdummy.save();
         }
-        else if (!userdummy||userdummy.isdummy===false) {
+        else if (!userdummy || userdummy.isdummy === false) {
             userdummy = await UserModel.create({
                 name,
                 email,
@@ -93,7 +93,7 @@ app.post("/login", async (req, res) => {
         email: email,
     })
 
-    if (!user||user.isdummy===true) {
+    if (!user || user.isdummy === true) {
         res.status(403).send({
             message: "user does not exist"
         })
@@ -234,12 +234,11 @@ app.post("/creategroup", auth, async (req, res) => {
                     email: friend.email
                 });
             }
-            else
-            {
-                friend=await UserModel.create({
-                    name:members[i].name,
-                    email:members[i].email,
-                    isdummy:true
+            else {
+                friend = await UserModel.create({
+                    name: members[i].name,
+                    email: members[i].email,
+                    isdummy: true
                 })
                 friend.groups.push(groupid);
                 await friend.save();
@@ -292,4 +291,61 @@ app.post("/creategroup", auth, async (req, res) => {
         return;
     }
 })
+
+app.post("/createfriend", auth, async (req, res) => {
+    const userid = req.userid;
+    const name = req.body.name;
+    const email = req.body.email;
+
+    let friend;
+    try {
+        friend = await UserModel.findOne({
+            email: email
+        })
+        if (!friend) {
+            friend = await UserModel.create({
+                name: name,
+                email: email,
+                isdummy: true
+            })
+        }
+        const CurrentUser = await UserModel.findOne({
+            _id: userid
+        })
+
+        const alreadyFriend = CurrentUser.friends.some(f => f.userId.toString() === friend._id.toString());
+
+        if (!alreadyFriend) {
+            CurrentUser.friends.push({
+                userId: friend._id,
+                name: friend.name,
+                email: friend.email,
+                personalBalance: 0
+            });
+            await CurrentUser.save();
+
+            friend.friends.push({
+                userId: CurrentUser._id,
+                name: CurrentUser.name,
+                email: CurrentUser.email,
+                personalBalance: 0
+            })
+            await friend.save();
+        }
+       else{
+        return res.status(200).json({
+            message: "Already Friend"
+        });
+       }
+        res.status(200).json({
+            message: "Friend added successfully"
+        });
+    }
+    catch (e) {
+        res.status(500).send({
+            message: "Backend error"
+        })
+    }
+})
+
 app.listen(3000);
