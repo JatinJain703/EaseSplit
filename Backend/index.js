@@ -3,7 +3,7 @@ const app = express();
 const bcrypt = require("bcrypt");
 const { z } = require("zod");
 const jwt = require("jsonwebtoken");
-const { UserModel, OTPModel, GroupModel, ExpenseModel } = require("./db.js");
+const { UserModel, OTPModel, GroupModel, ExpenseModel,SettlementModel } = require("./db.js");
 require('dotenv').config();
 const mongoose = require("mongoose");
 const mongourl = process.env.mongourl;
@@ -351,7 +351,8 @@ app.post("/CreateFriend", auth, async (req, res) => {
 app.post("/CreatefriendsExpense", auth, async (req, res) => {
     const userid = req.userid;
     const paidby = req.body.paidby;
-    const amount = req.body.amount;
+        let amount = req.body.amount;
+    amount=parseInt(amount);
     const description = req.body.description;
     const splitBetween = req.body.splitBetween;
 
@@ -399,7 +400,8 @@ app.post("/CreategroupExpense", auth, async (req, res) => {
     const userid = req.userid;
     const groupid = req.body.groupid;
     const paidby = req.body.paidby;
-    const amount = req.body.amount;
+        let amount = req.body.amount;
+    amount=parseInt(amount);
     const description = req.body.description;
     const splitBetween = req.body.splitBetween;
 
@@ -417,7 +419,7 @@ app.post("/CreategroupExpense", auth, async (req, res) => {
 
             
             let existingIndex = group.balances.findIndex(b =>
-                b.from.toString() === memberId && b.to.toString() === paidby
+                b.from.toString() === memberId.toString() && b.to.toString() === paidby.toString()
             );
 
             if (existingIndex !== -1) {
@@ -426,7 +428,7 @@ app.post("/CreategroupExpense", auth, async (req, res) => {
             } else {
                 
                 let reverseIndex = group.balances.findIndex(b =>
-                    b.from.toString() === paidby && b.to.toString() === memberId
+                    b.from.toString() === paidby.toString() && b.to.toString() === memberId.toString()
                 );
 
                 if (reverseIndex !== -1) {
@@ -476,5 +478,119 @@ app.post("/CreategroupExpense", auth, async (req, res) => {
     }
 });
 
+app.post("/CreatefriendsSettlement", auth, async (req, res) => {
+    const userid = req.userid;
+    const friendid = req.body.friendid;
+    let amount = req.body.amount;
+    amount=parseInt(amount);
+    
+    try {
+        const user = await UserModel.findOne({
+            _id: userid
+        })
+        
+        let friendindex=user.friends.findIndex(f=>f.userId.toString()===friendid.toString());
+        if(friendindex!=-1)
+        {
+            user.friends[friendindex].personalBalance-=amount;       
+        }
 
+        const friend = await UserModel.findOne({
+            _id: friendid
+        })
+
+        let userindex=friend.friends.findIndex(f=>f.userId.toString()===userid.toString());
+        if(userindex!=-1)
+        {
+           friend.friends[userindex].personalBalance+=amount;       
+        }
+        
+        await user.save();
+        await friend.save();
+
+        await SettlementModel.create({
+            groupId:null,
+            from:userid,
+            to:friendid,
+            amount:amount
+        })
+
+        res.status(200).send({
+            message: "Settlement created successfully"
+        })
+    } catch (e) {
+        res.status(500).send({
+            message: "Backend error"
+        })
+    }
+})
+
+app.post("/CreategroupSettlement", auth,async (req, res) => {
+    const userid = req.userid;
+    const groupid=req.body.groupid;
+    const friendid = req.body.friendid;
+    let amount = req.body.amount;
+    amount=parseInt(amount);
+    
+    try {
+        const group=await GroupModel.findOne({
+            _id:groupid
+        })
+         
+        let existingIndex = group.balances.findIndex(b =>
+                b.from.toString() === userid.toString() && b.to.toString() === friendid.toString()
+            );
+         if(existingIndex!=-1)
+         {
+            if(group.balances[existingIndex].amount>amount){
+                group.balances[existingIndex].amount-=amount;
+            }
+
+            else if(group.balances[existingIndex].amount<amount)
+            {
+                let existingamount=group.balances[existingIndex].amount;
+                group.balances.splice(existingIndex,1);
+                 group.balances.push({
+                            from: friendid,
+                            to: userid,
+                            amount: amount-existingamount
+                        });
+            }
+            else{
+             group.balances.splice(existingIndex,1);
+            }
+         }
+         else
+         {
+             let reverseIndex = group.balances.findIndex(b =>
+                b.from.toString() === friendid.toString() && b.to.toString() === userid.toString()
+            );
+          if (reverseIndex !== -1) {
+                group.balances[reverseIndex].amount += amount;
+            } else {
+                group.balances.push({
+                    from: friendid,
+                    to: userid,
+                    amount: amount
+                });
+            }
+         }
+
+         await group.save();
+        await SettlementModel.create({
+            groupId:groupid,
+            from:userid,
+            to:friendid,
+            amount:amount
+        })
+
+        res.status(200).send({
+            message: "Settlement created successfully"
+        })
+    } catch (e) {
+        res.status(500).send({
+            message: "Backend error"
+        })
+    }
+})
 app.listen(3000);
