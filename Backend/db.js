@@ -12,10 +12,15 @@ const User = new schema({
             userId: {type:objectId,unique:true},
             name: String,
             email: String,
-           personalBalance: { type: Number, default: 0 } // ✅ This is only for non-group expenses
+           personalBalance: { type: Number, default: 0 } 
         }
     ],
-    groups: [objectId]
+    groups: [
+        {
+            Gid:{type:objectId,unique:true},
+            Gname:String
+        }
+    ]
 })
 
 const OTP=new schema({
@@ -24,7 +29,7 @@ const OTP=new schema({
   createdAt: {
     type: Date,
     default: Date.now,
-    expires: 600 // TTL index: 600 seconds = 10 minutes
+    expires: 600 
   }
 })
 

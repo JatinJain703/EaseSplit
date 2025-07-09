@@ -18,26 +18,9 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-function auth(req, res, next) {
-  const token = req.headers.token;
-
-  if (!token) {
-    return res.status(401).json({ message: "Token not provided" });
-  }
-
-  try {
-    const user = jwt.verify(token, JWT_SECRET);
-    req.userid = user.id;
-    next();
-  } catch (err) {
-    return res.status(403).json({ message: "Invalid token" });
-  }
-}
 
 
-// ✅ Export the functions for CommonJS
 module.exports = {
   generateotp,
-  transporter,
-  auth
+  transporter
 };

@@ -3,19 +3,22 @@ const app = express();
 const bcrypt = require("bcrypt");
 const { z } = require("zod");
 const jwt = require("jsonwebtoken");
-const { UserModel, OTPModel, GroupModel, ExpenseModel,SettlementModel } = require("./db.js");
+const { UserModel, OTPModel, GroupModel, ExpenseModel, SettlementModel } = require("./db.js");
 require('dotenv').config();
 const mongoose = require("mongoose");
 const mongourl = process.env.mongourl;
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_SECRET2 = process.env.JWT_SECRET2;
 const EMAIL = process.env.EMAIL;
-const { generateotp, transporter, auth } = require("./functions.js");
+const { generateotp, transporter } = require("./functions.js");
 const nodemailer = require("nodemailer");
-
+const cors = require("cors");
 
 mongoose.connect(mongourl);
 app.use(express.json());
+app.use(cors({
+    origin: "http://localhost:5173"
+}));
 
 app.post("/signup", async (req, res) => {
     const requiredbody = z.object({
@@ -119,7 +122,7 @@ app.post("/login", async (req, res) => {
                 })
             }
         } catch (e) {
-            res.status(400).send({
+            res.status(500).send({
                 message: "Server Error"
             })
             return;
@@ -144,7 +147,7 @@ app.post("/login", async (req, res) => {
         }
         catch (e) {
             console.log(e);
-            res.status(400).send({
+            res.status(500).send({
                 message: "Backend error"
             });
             return;
@@ -186,8 +189,8 @@ app.post("/otp", async (req, res) => {
     }
 })
 
-app.post("/creategroup", auth, async (req, res) => {
-    const userid = req.userid;
+app.post("/creategroup", async (req, res) => {
+    const userid = req.body.userid;
     const name = req.body.name;
     const members = req.body.members;
     const membersid = [];
@@ -208,7 +211,10 @@ app.post("/creategroup", auth, async (req, res) => {
             name: currentUser.name,
             email: currentUser.email
         });
-        currentUser.groups.push(groupid);
+        currentUser.groups.push({
+            Gid: groupid,
+            Gname: name
+        });
         await currentUser.save();
 
         for (let i = 0; i < members.length; i++) {
@@ -225,14 +231,11 @@ app.post("/creategroup", auth, async (req, res) => {
                 return;
             }
             if (friend) {
-                friend.groups.push(groupid);
-                await friend.save();
-                membersid.push(friend._id);
-                availablemembers.push({
-                    userid: friend._id,
-                    name: friend.name,
-                    email: friend.email
+                friend.groups.push({
+                    Gid: groupid,
+                    Gname: name
                 });
+
             }
             else {
                 friend = await UserModel.create({
@@ -240,27 +243,30 @@ app.post("/creategroup", auth, async (req, res) => {
                     email: members[i].email,
                     isdummy: true
                 })
-                friend.groups.push(groupid);
-                await friend.save();
-                membersid.push(friend._id);
-                availablemembers.push({
-                    userid: friend._id,
-                    name: friend.name,
-                    email: friend.email
+                friend.groups.push({
+                    Gid: groupid,
+                    Gname: name
                 });
             }
+            await friend.save();
+            membersid.push(friend._id);
+            availablemembers.push({
+                userid: friend._id,
+                name: friend.name,
+                email: friend.email
+            });
         }
-        // Now make each member friends with all others in the group
+        
         for (let i = 0; i < availablemembers.length; i++) {
             const userA = availablemembers[i];
             const dbUserA = await UserModel.findById(userA.userid);
 
             for (let j = 0; j < availablemembers.length; j++) {
-                if (i === j) continue; // skip self
+                if (i === j) continue;
 
                 const userB = availablemembers[j];
 
-                // Check if already a friend
+                
                 const alreadyFriend = dbUserA.friends.some(f => f.userId.toString() === userB.userid.toString());
 
                 if (!alreadyFriend) {
@@ -292,8 +298,8 @@ app.post("/creategroup", auth, async (req, res) => {
     }
 })
 
-app.post("/CreateFriend", auth, async (req, res) => {
-    const userid = req.userid;
+app.post("/CreateFriend", async (req, res) => {
+    const userid = req.body.userid;
     const name = req.body.name;
     const email = req.body.email;
 
@@ -348,11 +354,11 @@ app.post("/CreateFriend", auth, async (req, res) => {
     }
 })
 
-app.post("/CreatefriendsExpense", auth, async (req, res) => {
-    const userid = req.userid;
+app.post("/CreatefriendsExpense", async (req, res) => {
+    const userid = req.body.userid;
     const paidby = req.body.paidby;
-        let amount = req.body.amount;
-    amount=parseInt(amount);
+    let amount = req.body.amount;
+    amount = parseInt(amount);
     const description = req.body.description;
     const splitBetween = req.body.splitBetween;
 
@@ -396,12 +402,12 @@ app.post("/CreatefriendsExpense", auth, async (req, res) => {
     }
 })
 
-app.post("/CreategroupExpense", auth, async (req, res) => {
-    const userid = req.userid;
+app.post("/CreategroupExpense", async (req, res) => {
+    const userid = req.body.userid;
     const groupid = req.body.groupid;
     const paidby = req.body.paidby;
-        let amount = req.body.amount;
-    amount=parseInt(amount);
+    let amount = req.body.amount;
+    amount = parseInt(amount);
     const description = req.body.description;
     const splitBetween = req.body.splitBetween;
 
@@ -417,16 +423,16 @@ app.post("/CreategroupExpense", auth, async (req, res) => {
 
             if (memberId === paidby) continue;
 
-            
+
             let existingIndex = group.balances.findIndex(b =>
                 b.from.toString() === memberId.toString() && b.to.toString() === paidby.toString()
             );
 
             if (existingIndex !== -1) {
-               
+
                 group.balances[existingIndex].amount += share;
             } else {
-                
+
                 let reverseIndex = group.balances.findIndex(b =>
                     b.from.toString() === paidby.toString() && b.to.toString() === memberId.toString()
                 );
@@ -437,7 +443,7 @@ app.post("/CreategroupExpense", auth, async (req, res) => {
                     if (existingAmount > share) {
                         group.balances[reverseIndex].amount -= share;
                     } else if (existingAmount < share) {
-                        
+
                         group.balances.splice(reverseIndex, 1);
                         group.balances.push({
                             from: memberId,
@@ -445,11 +451,11 @@ app.post("/CreategroupExpense", auth, async (req, res) => {
                             amount: share - existingAmount
                         });
                     } else {
-                     
+
                         group.balances.splice(reverseIndex, 1);
                     }
                 } else {
-                  
+
                     group.balances.push({
                         from: memberId,
                         to: paidby,
@@ -478,41 +484,39 @@ app.post("/CreategroupExpense", auth, async (req, res) => {
     }
 });
 
-app.post("/CreatefriendsSettlement", auth, async (req, res) => {
-    const userid = req.userid;
+app.post("/CreatefriendsSettlement", async (req, res) => {
+    const userid = req.body.userid;
     const friendid = req.body.friendid;
     let amount = req.body.amount;
-    amount=parseInt(amount);
-    
+    amount = parseInt(amount);
+
     try {
         const user = await UserModel.findOne({
             _id: userid
         })
-        
-        let friendindex=user.friends.findIndex(f=>f.userId.toString()===friendid.toString());
-        if(friendindex!=-1)
-        {
-            user.friends[friendindex].personalBalance-=amount;       
+
+        let friendindex = user.friends.findIndex(f => f.userId.toString() === friendid.toString());
+        if (friendindex != -1) {
+            user.friends[friendindex].personalBalance -= amount;
         }
 
         const friend = await UserModel.findOne({
             _id: friendid
         })
 
-        let userindex=friend.friends.findIndex(f=>f.userId.toString()===userid.toString());
-        if(userindex!=-1)
-        {
-           friend.friends[userindex].personalBalance+=amount;       
+        let userindex = friend.friends.findIndex(f => f.userId.toString() === userid.toString());
+        if (userindex != -1) {
+            friend.friends[userindex].personalBalance += amount;
         }
-        
+
         await user.save();
         await friend.save();
 
         await SettlementModel.create({
-            groupId:null,
-            from:userid,
-            to:friendid,
-            amount:amount
+            groupId: null,
+            from: userid,
+            to: friendid,
+            amount: amount
         })
 
         res.status(200).send({
@@ -525,47 +529,44 @@ app.post("/CreatefriendsSettlement", auth, async (req, res) => {
     }
 })
 
-app.post("/CreategroupSettlement", auth,async (req, res) => {
-    const userid = req.userid;
-    const groupid=req.body.groupid;
+app.post("/CreategroupSettlement", async (req, res) => {
+    const userid = req.body.userid;
+    const groupid = req.body.groupid;
     const friendid = req.body.friendid;
     let amount = req.body.amount;
-    amount=parseInt(amount);
-    
+    amount = parseInt(amount);
+
     try {
-        const group=await GroupModel.findOne({
-            _id:groupid
+        const group = await GroupModel.findOne({
+            _id: groupid
         })
-         
+
         let existingIndex = group.balances.findIndex(b =>
-                b.from.toString() === userid.toString() && b.to.toString() === friendid.toString()
-            );
-         if(existingIndex!=-1)
-         {
-            if(group.balances[existingIndex].amount>amount){
-                group.balances[existingIndex].amount-=amount;
+            b.from.toString() === userid.toString() && b.to.toString() === friendid.toString()
+        );
+        if (existingIndex != -1) {
+            if (group.balances[existingIndex].amount > amount) {
+                group.balances[existingIndex].amount -= amount;
             }
 
-            else if(group.balances[existingIndex].amount<amount)
-            {
-                let existingamount=group.balances[existingIndex].amount;
-                group.balances.splice(existingIndex,1);
-                 group.balances.push({
-                            from: friendid,
-                            to: userid,
-                            amount: amount-existingamount
-                        });
+            else if (group.balances[existingIndex].amount < amount) {
+                let existingamount = group.balances[existingIndex].amount;
+                group.balances.splice(existingIndex, 1);
+                group.balances.push({
+                    from: friendid,
+                    to: userid,
+                    amount: amount - existingamount
+                });
             }
-            else{
-             group.balances.splice(existingIndex,1);
+            else {
+                group.balances.splice(existingIndex, 1);
             }
-         }
-         else
-         {
-             let reverseIndex = group.balances.findIndex(b =>
+        }
+        else {
+            let reverseIndex = group.balances.findIndex(b =>
                 b.from.toString() === friendid.toString() && b.to.toString() === userid.toString()
             );
-          if (reverseIndex !== -1) {
+            if (reverseIndex !== -1) {
                 group.balances[reverseIndex].amount += amount;
             } else {
                 group.balances.push({
@@ -574,14 +575,14 @@ app.post("/CreategroupSettlement", auth,async (req, res) => {
                     amount: amount
                 });
             }
-         }
+        }
 
-         await group.save();
+        await group.save();
         await SettlementModel.create({
-            groupId:groupid,
-            from:userid,
-            to:friendid,
-            amount:amount
+            groupId: groupid,
+            from: userid,
+            to: friendid,
+            amount: amount
         })
 
         res.status(200).send({
@@ -591,6 +592,145 @@ app.post("/CreategroupSettlement", auth,async (req, res) => {
         res.status(500).send({
             message: "Backend error"
         })
+    }
+})
+
+app.get("/auth", (req, res) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "Token not provided or invalid format" });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    try {
+        const info = jwt.verify(token, JWT_SECRET);
+        return res.status(200).json({
+            message: "Token is valid",
+            userid: info.id
+        });
+    } catch (err) {
+        return res.status(401).json({ message: "Invalid or expired token" });
+    }
+});
+
+app.get("/Unsettledfriends", async (req, res) => {
+    const userid = req.headers.userid;
+
+    try {
+        const user = await UserModel.findById(userid);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const unsettledFriends = user.friends.filter(friend => friend.personalBalance !== 0);
+
+        res.json({ unsettledFriends });
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error });
+    }
+})
+
+app.get("/Settledfriends", async (req, res) => {
+    const userid = req.headers.userid;
+    try {
+        const user = await UserModel.findById(userid);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const settledFriends = user.friends.filter(friend => friend.personalBalance === 0);
+
+        res.json({ settledFriends });
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error });
+    }
+})
+
+app.get("/Groups", async (req, res) => {
+    const userid = req.headers.userid;
+    try {
+        const user = await UserModel.findById(userid);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const groups = user.groups;
+
+        res.json({ groups });
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error });
+    }
+})
+
+app.get("/GroupInfo", async (req, res) => {
+    const groupid = req.headers.groupid;
+    const userid = req.headers.userid;
+
+    try {
+        const currentUser = await UserModel.findById(userid).lean();
+        const group = await GroupModel.findById(groupid).lean();
+
+        if (!group || !currentUser) {
+            return res.status(404).json({ message: "User or Group not found" });
+        }
+
+       
+        const idToName = {};
+        currentUser.friends.forEach(friend => {
+            idToName[friend.userId.toString()] = friend.name;
+        });
+         idToName[userid.toString()] = "You";
+        
+        const membersInfo = group.members.map(id => ({
+            id: id,
+            name: idToName[id.toString()] || "Unknown"
+        }));
+        
+       
+        
+        const readableBalances = group.balances.map(b => ({
+            from: {
+                id: b.from,
+                name: idToName[b.from.toString()] || "Unknown"
+            },
+            to: {
+                id: b.to,
+                name: idToName[b.to.toString()] || "Unknown"
+            },
+            amount: b.amount
+        }));
+
+       
+        res.json({
+            members: membersInfo,
+            balances: readableBalances
+        });
+
+    } catch (error) {
+        console.error("Error in /GroupInfo:", error);
+        res.status(500).json({ message: "Server error", error });
+    }
+});
+
+app.get("/friendInfo",async(req,res)=>{
+    const userid=req.headers.userid;
+    const friendid=req.headers.friendid;
+    try{
+       const user= await UserModel.findById(userid);
+       
+       let friend=user.friends.find(f=>f.userId.toString()===friendid.toString());
+
+       res.status(200).send({
+        friend:friend
+       })
+    }catch (error) {
+        console.error("Error in /GroupInfo:", error);
+        res.status(500).json({ message: "Server error", error });
     }
 })
 app.listen(3000);
