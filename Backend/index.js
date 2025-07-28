@@ -256,7 +256,7 @@ app.post("/creategroup", async (req, res) => {
                 email: friend.email
             });
         }
-        
+
         for (let i = 0; i < availablemembers.length; i++) {
             const userA = availablemembers[i];
             const dbUserA = await UserModel.findById(userA.userid);
@@ -266,7 +266,7 @@ app.post("/creategroup", async (req, res) => {
 
                 const userB = availablemembers[j];
 
-                
+
                 const alreadyFriend = dbUserA.friends.some(f => f.userId.toString() === userB.userid.toString());
 
                 if (!alreadyFriend) {
@@ -340,16 +340,17 @@ app.post("/CreateFriend", async (req, res) => {
         }
         else {
             return res.status(200).json({
-                message: "Already Friend"
+                error: "Already Friend"
             });
         }
         res.status(200).json({
-            message: "Friend added successfully"
+            message: "Friend added successfully",
+            friendid:friend._id
         });
     }
     catch (e) {
         res.status(500).send({
-            message: "Backend error"
+            error: "Backend error"
         })
     }
 })
@@ -615,41 +616,6 @@ app.get("/auth", (req, res) => {
     }
 });
 
-app.get("/Unsettledfriends", async (req, res) => {
-    const userid = req.headers.userid;
-
-    try {
-        const user = await UserModel.findById(userid);
-
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
-        const unsettledFriends = user.friends.filter(friend => friend.personalBalance !== 0);
-
-        res.json({ unsettledFriends });
-    } catch (error) {
-        res.status(500).json({ message: "Server error", error });
-    }
-})
-
-app.get("/Settledfriends", async (req, res) => {
-    const userid = req.headers.userid;
-    try {
-        const user = await UserModel.findById(userid);
-
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
-        const settledFriends = user.friends.filter(friend => friend.personalBalance === 0);
-
-        res.json({ settledFriends });
-    } catch (error) {
-        res.status(500).json({ message: "Server error", error });
-    }
-})
-
 app.get("/Groups", async (req, res) => {
     const userid = req.headers.userid;
     try {
@@ -659,7 +625,7 @@ app.get("/Groups", async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        const groups = user.groups;
+        const groups = user.groups.reverse();
 
         res.json({ groups });
     } catch (error) {
@@ -679,20 +645,20 @@ app.get("/GroupInfo", async (req, res) => {
             return res.status(404).json({ message: "User or Group not found" });
         }
 
-       
+
         const idToName = {};
         currentUser.friends.forEach(friend => {
             idToName[friend.userId.toString()] = friend.name;
         });
-         idToName[userid.toString()] = "You";
-        
+        idToName[userid.toString()] = "You";
+
         const membersInfo = group.members.map(id => ({
             id: id,
             name: idToName[id.toString()] || "Unknown"
         }));
-        
-       
-        
+
+
+
         const readableBalances = group.balances.map(b => ({
             from: {
                 id: b.from,
@@ -705,7 +671,7 @@ app.get("/GroupInfo", async (req, res) => {
             amount: b.amount
         }));
 
-       
+
         res.json({
             members: membersInfo,
             balances: readableBalances
@@ -717,20 +683,123 @@ app.get("/GroupInfo", async (req, res) => {
     }
 });
 
-app.get("/friendInfo",async(req,res)=>{
-    const userid=req.headers.userid;
-    const friendid=req.headers.friendid;
-    try{
-       const user= await UserModel.findById(userid);
-       
-       let friend=user.friends.find(f=>f.userId.toString()===friendid.toString());
+app.get("/friendInfo", async (req, res) => {
+    const userid = req.headers.userid;
+    const friendid = req.headers.friendid;
+    try {
+        const user = await UserModel.findById(userid);
 
-       res.status(200).send({
-        friend:friend
-       })
-    }catch (error) {
+        let friend = user.friends.find(f => f.userId.toString() === friendid.toString());
+
+        res.status(200).send({
+            friend: friend
+        })
+    } catch (error) {
         console.error("Error in /GroupInfo:", error);
         res.status(500).json({ message: "Server error", error });
     }
 })
+
+app.get("/Grouptransac", async (req, res) => {
+    const groupid = req.headers.groupid;
+    try {
+        const Expense = await ExpenseModel.find({
+            groupId: groupid
+        }).sort({ date: -1 }).lean();
+        const Settlement = await SettlementModel.find({
+            groupId: groupid
+        }).sort({ date: -1 }).lean();
+        res.status(200).json({
+            Expense,
+            Settlement
+        })
+    } catch (err) {
+        res.status(500).send({
+            message: "Server error", err
+        })
+    }
+})
+
+app.get("/Friendtransac", async (req, res) => {
+    const userid = req.headers.userid;
+    const friendid = req.headers.friendid;
+    try {
+        const expenses = await ExpenseModel.find({
+            groupId: null,
+            splitBetween: {
+                $all: [
+                    { $elemMatch: { userId: userid } },
+                    { $elemMatch: { userId: friendid } }
+                ]
+            }
+        }).sort({ date: -1 }).lean();
+        const settlement1 = await SettlementModel.find({
+            groupId: null,
+            from: userid,
+            to: friendid
+        });
+        const settlement2 = await SettlementModel.find({
+            groupId: null,
+            from: friendid,
+            to: userid
+        });
+
+        const settlements = [...settlement1, ...settlement2].sort((a, b) => b.date - a.date);
+
+        res.status(200).json({
+            expenses,
+            settlements
+        })
+    } catch (err) {
+        res.status(500).send({
+            message: "Server error", err
+        })
+    }
+})
+
+app.get("/Usertransac",async(req,res)=>{
+    const userid=req.headers.userid;
+     try{
+    const expenses=await ExpenseModel.find({
+        createdby:userid
+    }).sort({date:-1}).lean();
+
+    const settlements=await SettlementModel.find({
+        from:userid
+    }).sort({date:-1}).lean();
+
+     res.status(200).json({
+            expenses,
+            settlements
+        })
+    }catch (err) {
+        res.status(500).send({
+            message: "Server error", err
+        })
+    }
+})
+
+app.get("/Friends",async(req,res)=>{
+    const userid=req.headers.userid;
+    try{
+        const user=await UserModel.findById(userid);
+        if(!user)
+            res.status(400).send({message:"user does not exist"});
+        const AllFriends=user.friends;
+        const Unsettled = AllFriends.filter(friend => friend.personalBalance !== 0).reverse();
+        const Settled = AllFriends.filter(friend => friend.personalBalance === 0).reverse();
+        res.status(200).send({
+            AllFriends,
+            Unsettled,
+            Settled
+        })
+    }catch(err)
+    {
+        res.status(500).send({
+            message:"Server error",err
+        })
+    }
+})
+
+
 app.listen(3000);

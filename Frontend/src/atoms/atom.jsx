@@ -13,6 +13,22 @@ export const otpgeneratedAtom=atom({
   default:Array(6).fill("")
 })
 
+export const FriendsAtom=atom({
+  key:"Friends",
+  default:{
+    AllFriends:[],
+    Settled:[],
+    Unsettled:[]
+  }
+})
+
+export const GroupAtom=atom({
+  key:"Groups",
+  default:{
+    Groups:[]
+  }
+})
+
 export const authSelector = selector({
   key: "authSelector",
   get: async () => {

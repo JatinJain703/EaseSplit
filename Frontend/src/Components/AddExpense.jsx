@@ -65,6 +65,7 @@ export function AddExpense({ onClose, onSubmit, title = "Add Expense", members =
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-colors bg-gray-50 focus:bg-white"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                onWheel={(e) => e.target.blur()}
                 placeholder="₹0.00"
                 required
               />
@@ -149,6 +150,7 @@ export function AddExpense({ onClose, onSubmit, title = "Add Expense", members =
                           className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-colors"
                           value={shares[id] || ""}
                           onChange={(e) => handleShareChange(id, e.target.value)}
+                          onWheel={(e) => e.target.blur()}
                           placeholder="₹0.00"
                           required
                         />
