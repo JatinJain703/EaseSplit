@@ -4,6 +4,7 @@ import { Footer } from "./Footer";
 import { AddExpense } from "./AddExpense";
 import { useState } from "react";
 import { Settleup } from "./Settleup";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 export function FriendDetail() {
     const location = useLocation();
@@ -11,7 +12,7 @@ export function FriendDetail() {
     const[friend,setfriend]=useState(initialfriend);
     const [showExpenseBox, setShowExpenseBox] = useState(false);
     const [showSettleup,setshowSettleup]=useState(false);
-   
+   const navigate=useNavigate();
 
     const fetchFriendInfo = async () => {
   try {
@@ -112,7 +113,9 @@ export function FriendDetail() {
 
          
           <div className="text-center py-4 border-t border-gray-100">
-            <button className="text-blue-600 text-sm font-semibold hover:underline">
+            <button 
+            onClick={() => navigate(`/friend/${friend.name}/transactions`, { state: friend })}
+            className="text-blue-600 text-sm font-semibold hover:underline">
               Show all settled transactions
             </button>
           </div>

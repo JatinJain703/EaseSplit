@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AddExpense } from "./AddExpense";
 import { Settleup } from "./Settleup";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 export function GroupDetail() {
@@ -14,6 +15,7 @@ export function GroupDetail() {
   const [showMembers, setShowMembers] = useState(false);
   const [showExpenseBox, setShowExpenseBox] = useState(false);
   const [showSettleup, setshowSettleup] = useState(false);
+  const navigate = useNavigate();
   async function fetchgroupinfo() {
     try {
       const response = await axios.get("http://localhost:3000/GroupInfo", {
@@ -71,13 +73,13 @@ export function GroupDetail() {
   };
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      
+
       <Header />
 
-      
+
       <main className="flex-1 flex justify-center px-4 py-6">
         <div className="w-full max-w-md bg-white shadow-xl rounded-2xl border border-slate-200 flex flex-col relative">
-          
+
           <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-blue-100">
             <div>
               <h1 className="text-2xl font-bold text-blue-800">{group.Gname}</h1>
@@ -92,9 +94,9 @@ export function GroupDetail() {
             </div>
           </div>
 
-          
+
           <div className="flex-grow flex flex-col px-6 py-8 overflow-auto relative">
-            
+
             <div className="absolute top-3 right-2 w-32 z-10">
               <div className="bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
                 <button
@@ -128,7 +130,7 @@ export function GroupDetail() {
               </div>
             </div>
 
-            
+
             {balances.length > 0 ? (
               <div className="space-y-4 mb-6 ">
                 <h2 className="text-lg font-semibold text-gray-800 mb-2">Group Balances</h2>
@@ -148,15 +150,22 @@ export function GroupDetail() {
               </div>
             )}
 
-           
+
             <div className="text-center mt-auto">
-              <button className="text-blue-600 hover:underline text-sm font-medium">See all transactions</button>
+              <button
+                onClick={() => navigate(`/group/${group.Gname}/transactions`, {
+                  state: {
+                    group,
+                    members,
+                  }
+                })}
+                className="text-blue-600 hover:underline text-sm font-medium">See all transactions</button>
             </div>
           </div>
         </div>
       </main>
 
-      
+
       <Footer />
       {showExpenseBox && (
         <AddExpense

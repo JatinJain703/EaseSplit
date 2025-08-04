@@ -8,6 +8,8 @@ import { FriendDetail } from "./Components/FriendDetail"
 import { Activity } from "./Components/Activity"
 import { MyAcc } from "./Components/MyAcc"
 import { GroupDetail } from "./Components/GroupDetail"
+import { Friendtransac } from "./Components/Friendtransac"
+import { Grouptransac } from "./Components/Grouptransac"
 export default function App()
 {
   return (
@@ -21,7 +23,9 @@ export default function App()
           <Route path="/Activity" element={<Activity/>}/>
           <Route path="/MyAcc" element={<MyAcc/>}/>
            <Route path="/friend/:name" element={<FriendDetail />} />
+           <Route path="/friend/:name/transactions" element={<Friendtransac />} />
            <Route path="/Group/:name" element={<GroupDetail />} />
+           <Route path="/Group/:name/transactions" element={<Grouptransac />} />
        </Routes>
     </>
   )

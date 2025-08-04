@@ -1,42 +1,37 @@
 import { Header } from "./Header"
 import { Footer } from "./Footer"
-import { FriendsAtom } from "../atoms/atom"
-import { GroupAtom } from "../atoms/atom"
-import { usegetGroups } from "../hooks/usegetGroups"
-import { useRecoilValue } from "recoil"
+import { useLocation } from "react-router-dom"
 import { useState, useEffect } from "react"
 import axios from "axios"
 
-async function fetchAct() {
-  try {
-    const response = await axios.get("http://localhost:3000/Usertransac", {
-      headers: {
-        userid: localStorage.getItem("userid"),
-      },
-    })
-    return response.data
-  } catch (err) {
-    console.log(err)
-    return {
-      expenses: [],
-      settlements: [],
-    }
-  }
-}
-
-export function Activity() {
-  const Friends = useRecoilValue(FriendsAtom)
-  const Groups = useRecoilValue(GroupAtom)
+export function Friendtransac() {
+  const location = useLocation()
+  const [friend, setfriend] = useState(location.state)
   const [Expenses, setExpenses] = useState([])
   const [Settlement, setSettlement] = useState([])
   const [expandedItems, setExpandedItems] = useState(new Set())
-  const getGroups = usegetGroups()
-
   const currentUserId = localStorage.getItem("userid")
+
+  async function fetchAct() {
+    try {
+      const response = await axios.get("http://localhost:3000/Friendtransac", {
+        headers: {
+          userid: localStorage.getItem("userid"),
+          friendid: friend.userId,
+        },
+      })
+      return response.data
+    } catch (err) {
+      console.log(err)
+      return {
+        expenses: [],
+        settlements: [],
+      }
+    }
+  }
 
   useEffect(() => {
     const fetchData = async () => {
-      await getGroups()
       const data = await fetchAct()
       setExpenses((data.expenses || []).map((exp) => ({ ...exp, type: "expense" })))
       setSettlement((data.settlements || []).map((sett) => ({ ...sett, type: "settlement" })))
@@ -44,24 +39,10 @@ export function Activity() {
     fetchData()
   }, [])
 
-  const friendsMap = new Map()
-  ;(Friends.AllFriends || []).forEach((friend) => {
-    friendsMap.set(friend.userId, friend)
-  })
-
-  const groupsMap = new Map()
-  ;(Groups || []).forEach((group) => {
-    groupsMap.set(group.Gid, group)
-  })
-
   const getUserName = (userId) => {
     if (userId === currentUserId) return "You"
-    return friendsMap.get(userId)?.name || "Unknown User"
-  }
-
-  const getGroupName = (groupId) => {
-    if (!groupId) return null
-    return groupsMap.get(groupId)?.Gname || "Unknown Group"
+    if (userId === friend.userId) return friend.name
+    return "Unknown User"
   }
 
   const allActivities = [...Expenses, ...Settlement].sort(
@@ -98,7 +79,7 @@ export function Activity() {
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 flex flex-col">
           <div className="bg-blue-100 px-6 py-4 border-b border-blue-200 rounded-t-2xl">
             <div className="flex items-center justify-center">
-              <h2 className="text-xl font-bold text-blue-800">My Activity</h2>
+              <h2 className="text-xl font-bold text-blue-800">{friend.name}</h2>
             </div>
           </div>
           <div className="flex-grow flex flex-col px-6 py-8 overflow-auto">
@@ -120,9 +101,6 @@ export function Activity() {
                                     {getUserName(item.paidBy)} paid {formatAmount(item.amount)}
                                   </div>
                                   <div className="text-sm text-gray-600 mt-1">{item.description}</div>
-                                  {item.groupId && (
-                                    <div className="text-sm text-blue-600 mt-1">in {getGroupName(item.groupId)}</div>
-                                  )}
                                   <div className="text-xs text-gray-500 mt-1">{formatDate(item.date)}</div>
                                 </div>
                                 <div className="text-blue-600">
@@ -145,7 +123,6 @@ export function Activity() {
                               </div>
                             </button>
 
-                          
                             {expandedItems.has(item._id) && (
                               <div className="mt-2 bg-blue-50 rounded-xl p-4 border border-blue-200">
                                 <div className="space-y-3">
@@ -197,9 +174,6 @@ export function Activity() {
                                   {getUserName(item.from)} settled {formatAmount(item.amount)} with{" "}
                                   {getUserName(item.to)}
                                 </div>
-                                {item.groupId && (
-                                  <div className="text-sm text-blue-600 mt-1">in {getGroupName(item.groupId)}</div>
-                                )}
                                 <div className="text-xs text-gray-500 mt-1">{formatDate(item.date)}</div>
                               </div>
                               <div className="text-lg font-bold text-green-600">{formatAmount(item.amount)}</div>
@@ -213,7 +187,7 @@ export function Activity() {
               ) : (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-gray-500 text-center">
-                    No activity found. Your expenses and settlements will appear here!
+                    No transactions found with {friend.name}. Your shared expenses and settlements will appear here!
                   </p>
                 </div>
               )}
