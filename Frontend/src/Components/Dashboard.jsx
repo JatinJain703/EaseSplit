@@ -11,6 +11,8 @@ import { Addfriend } from "./Addfriend";
 import { Addgroup } from "./Addgroup";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
+import { usegetFriends } from "../hooks/usegetFriends";
+
 export function Dashboard() {
     const auth = useRecoilValueLoadable(authSelector);
     const refreshAuth = useRecoilRefresher_UNSTABLE(authSelector);
@@ -99,6 +101,11 @@ export function Mainpage() {
     const [showAddfriend,setshowAddfriend]=useState(false);
     const [showAddgroup,setshowAddgroup]=useState(false);
     const navigate = useNavigate();
+    const fetchFriends=usegetFriends();
+
+     useEffect(()=>{
+      fetchFriends();
+    },[])
 
      return (
     <div className="h-screen flex flex-col bg-blue-50">

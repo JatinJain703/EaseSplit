@@ -10,6 +10,7 @@ import { MyAcc } from "./Components/MyAcc"
 import { GroupDetail } from "./Components/GroupDetail"
 import { Friendtransac } from "./Components/Friendtransac"
 import { Grouptransac } from "./Components/Grouptransac"
+import { ErrorBoundary } from "./Components/ErrorBoundary"
 export default function App()
 {
   return (
@@ -20,7 +21,11 @@ export default function App()
           <Route path="/Dashboard" element={<Dashboard/>}/>
           <Route path="/Friends" element={<Friends/>}/>
           <Route path="/Groups" element={<Groups/>}/>
-          <Route path="/Activity" element={<Activity/>}/>
+          <Route path="/Activity" element={
+            <ErrorBoundary>
+            <Activity/>
+            </ErrorBoundary>
+            }/>
           <Route path="/MyAcc" element={<MyAcc/>}/>
            <Route path="/friend/:name" element={<FriendDetail />} />
            <Route path="/friend/:name/transactions" element={<Friendtransac />} />

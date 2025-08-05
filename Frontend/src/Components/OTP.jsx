@@ -13,9 +13,7 @@ export function Otp({email,password}) {
 
   useEffect(() => {
     if (time <= 0) return;
-  console.log("clock");
   const interval = setInterval(() => {
- console.log(time);
     settime(prev => {
       if (prev <= 1) {
         clearInterval(interval);
@@ -70,34 +68,36 @@ export function Otp({email,password}) {
   }
   };
 
-  return (
-    <div className="flex flex-col items-center space-y-4">
-      <div className="flex space-x-2">
-        {otp.map((digit, index) => (
-          <input
-            key={index}
-            type="text"
-            value={digit}
-            onChange={(e) => handleChange(index, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(e, index)}
-            ref={(el) => (inputRefs.current[index] = el)}
-            maxLength="1"
-            className="w-10 h-10 text-center text-lg border border-gray-300 rounded"
-          />
-        ))}
-         {time > 0 && (
-          <div className="ml-4 mt-2 text-gray-600">
-            <Clock time={time} />
-          </div>
-        )}
-      </div>
-      <button
-        onClick={(e)=>handleResend(e)}
-        disabled={time>0}
-        className="text-blue-600 hover:underline mt-2"
-      >
-        Resend OTP
-      </button>
+ return (
+  <div className="flex flex-col items-center space-y-4">
+    <div className="flex space-x-2">
+      {otp.map((digit, index) => (
+        <input
+          key={index}
+          type="text"
+          value={digit}
+          onChange={(e) => handleChange(index, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(e, index)}
+          ref={(el) => (inputRefs.current[index] = el)}
+          maxLength="1"
+          className="w-10 h-10 text-center text-lg border border-gray-300 rounded"
+        />
+      ))}
     </div>
-  );
+    
+    {time > 0 && (
+      <div className="text-gray-600 text-sm">
+        <Clock time={time} />
+      </div>
+    )}
+    
+    <button
+      onClick={(e) => handleResend(e)}
+      disabled={time > 0}
+      className="text-blue-600 hover:underline disabled:text-gray-400 disabled:cursor-not-allowed"
+    >
+      Resend OTP
+    </button>
+  </div>
+);
 }
