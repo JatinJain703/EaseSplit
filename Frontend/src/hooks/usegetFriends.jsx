@@ -9,7 +9,7 @@ export function usegetFriends()
 
         async function fetchFriends() {
             try {
-                const response = await axios.get("http://localhost:3000/Friends", {
+                const response = await axios.get("https://easesplit.onrender.com/Friends", {
                     headers: {
                         userid: localStorage.getItem("userid")
                     },

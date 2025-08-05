@@ -49,7 +49,7 @@ export function Otp({email,password}) {
     e.preventDefault();
     localStorage.removeItem("token");
   try {
-    const response = await axios.post("http://localhost:3000/login", {
+    const response = await axios.post("https://easesplit.onrender.com/login", {
       email,
       password
     });

@@ -18,7 +18,7 @@ export function Friends() {
 
   async function handleAddfriend(Friend) {
   try {
-    const response = await axios.post("http://localhost:3000/CreateFriend", {
+    const response = await axios.post("https://easesplit.onrender.com/CreateFriend", {
       userid: localStorage.getItem("userid"),
       name: Friend.name,
       email: Friend.email

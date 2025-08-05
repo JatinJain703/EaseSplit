@@ -6,7 +6,7 @@ export function usegetGroups() {
 
     async function fetchgroups() {
         try {
-            const response = await axios.get("http://localhost:3000/Groups", {
+            const response = await axios.get("https://easesplit.onrender.com/Groups", {
                 headers: {
                     userid: localStorage.getItem("userid")
                 },

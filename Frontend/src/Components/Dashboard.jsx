@@ -57,7 +57,7 @@ export function Dashboard() {
 async function handleAddfriend(Friend)
 {
   try{
-    const response=await axios.post("http://localhost:3000/CreateFriend",{
+    const response=await axios.post("https://easesplit.onrender.com/CreateFriend",{
       userid:localStorage.getItem("userid"),
       name:Friend.name,
       email:Friend.email
@@ -77,7 +77,7 @@ async function handleAddfriend(Friend)
 
 async function  handleAddgroup(group) {
   try{
-    const response=await axios.post("http://localhost:3000/creategroup",{
+    const response=await axios.post("https://easesplit.onrender.com/creategroup",{
       userid:localStorage.getItem("userid"),
       name:group.name,
       members:group.members

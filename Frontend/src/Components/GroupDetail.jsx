@@ -18,7 +18,7 @@ export function GroupDetail() {
   const navigate = useNavigate();
   async function fetchgroupinfo() {
     try {
-      const response = await axios.get("http://localhost:3000/GroupInfo", {
+      const response = await axios.get("https://easesplit.onrender.com/GroupInfo", {
         headers: {
           userid: localStorage.getItem("userid"),
           groupid: group.Gid
@@ -43,7 +43,7 @@ export function GroupDetail() {
 
   const handleAddExpense = async (expenseData) => {
     try {
-      await axios.post("http://localhost:3000/CreategroupExpense", {
+      await axios.post("https://easesplit.onrender.com/CreategroupExpense", {
         userid: localStorage.getItem("userid"),
         groupid: group.Gid,
         paidby: expenseData.paidBy,
@@ -59,7 +59,7 @@ export function GroupDetail() {
   };
   const handleSettleup = async (SettleData) => {
     try {
-      await axios.post("http://localhost:3000/CreategroupSettlement", {
+      await axios.post("https://easesplit.onrender.com/CreategroupSettlement", {
         userid: localStorage.getItem("userid"),
         groupid: group.Gid,
         friendid: SettleData.to,

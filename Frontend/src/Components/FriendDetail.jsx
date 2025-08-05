@@ -16,7 +16,7 @@ export function FriendDetail() {
 
     const fetchFriendInfo = async () => {
   try {
-    const res = await axios.get(`http://localhost:3000/friendInfo`, {
+    const res = await axios.get(`https://easesplit.onrender.com/friendInfo`, {
       headers: {
         userid: localStorage.getItem("userid"),
         friendid: initialfriend.userId,
@@ -41,7 +41,7 @@ export function FriendDetail() {
     
     const handleAddExpense = async (expenseData) => {
     try{
-      await axios.post("http://localhost:3000/CreatefriendsExpense",{
+      await axios.post("https://easesplit.onrender.com/CreatefriendsExpense",{
         userid:localStorage.getItem("userid"),
         paidby:expenseData.paidBy,
         amount:expenseData.amount,
@@ -57,7 +57,7 @@ export function FriendDetail() {
   };
   const handleSettleup = async (SettleData) => {
     try{
-      await axios.post("http://localhost:3000/CreatefriendsSettlement",{
+      await axios.post("https://easesplit.onrender.com/CreatefriendsSettlement",{
         userid:localStorage.getItem("userid"),
         friendid:SettleData.to,
         amount:SettleData.amount

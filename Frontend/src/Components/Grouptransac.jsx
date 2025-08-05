@@ -14,7 +14,7 @@ export function Grouptransac() {
 
   async function fetchAct() {
     try {
-      const response = await axios.get("http://localhost:3000/Grouptransac", {
+      const response = await axios.get("https://easesplit.onrender.com/Grouptransac", {
         headers: {
           groupid: group.Gid,
         },

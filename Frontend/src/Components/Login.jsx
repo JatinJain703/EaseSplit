@@ -44,7 +44,7 @@ export function Login() {
   }
   
    try {
-    const response = await axios.post("http://localhost:3000/login", {
+    const response = await axios.post("https://easesplit.onrender.com/login", {
       email,
       password
     });
@@ -79,7 +79,7 @@ export function Login() {
      }
     const token=localStorage.getItem("token");
     try{
-  const response = await axios.post("http://localhost:3000/otp", {
+  const response = await axios.post("https://easesplit.onrender.com/otp", {
       token,
       otp: otp.join("") 
     });

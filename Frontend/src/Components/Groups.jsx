@@ -26,7 +26,7 @@ export function Groups() {
   async function handleAddgroup(group) {
  
   try {
-    const response = await axios.post("http://localhost:3000/creategroup", {
+    const response = await axios.post("https://easesplit.onrender.com/creategroup", {
       userid: localStorage.getItem("userid"),
       name: group.name,
       members: group.members

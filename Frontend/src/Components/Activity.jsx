@@ -9,7 +9,7 @@ import axios from "axios"
 
 async function fetchAct() {
   try {
-    const response = await axios.get("http://localhost:3000/Usertransac", {
+    const response = await axios.get("https://easesplit.onrender.com/Usertransac", {
       headers: {
         userid: localStorage.getItem("userid"),
       },

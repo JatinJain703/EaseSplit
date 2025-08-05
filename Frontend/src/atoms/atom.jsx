@@ -36,7 +36,7 @@ export const authSelector = selector({
     if (!token) return false;
 
     try {
-      const response = await axios.get("http://localhost:3000/auth", {
+      const response = await axios.get("https://easesplit.onrender.com/auth", {
         headers: {
           Authorization: `Bearer ${token}`,
         },

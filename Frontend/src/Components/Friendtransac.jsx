@@ -14,7 +14,7 @@ export function Friendtransac() {
 
   async function fetchAct() {
     try {
-      const response = await axios.get("http://localhost:3000/Friendtransac", {
+      const response = await axios.get("https://easesplit.onrender.com/Friendtransac", {
         headers: {
           userid: localStorage.getItem("userid"),
           friendid: friend.userId,
