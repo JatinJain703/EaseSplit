@@ -16,9 +16,7 @@ const cors = require("cors");
 
 mongoose.connect(mongourl);
 app.use(express.json());
-app.use(cors({
-    origin: "http://localhost:5173"
-}));
+app.use(cors());
 
 app.post("/signup", async (req, res) => {
     const requiredbody = z.object({

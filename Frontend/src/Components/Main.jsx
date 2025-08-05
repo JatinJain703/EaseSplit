@@ -67,25 +67,33 @@ function Mainpage() {
 
     );
 }
+
 function Header({ onsignup, onlogin }) {
-    return (
-        <div className="h-full px-8 flex items-center justify-between bg-white">
-
-            <div className="flex items-center gap-3 ml-10">
-                <img src={FullLogo} alt="Logo" className="w-10 h-10 rounded-sm object-contain" />
-                <span className="text-2xl font-semibold text-blue-800">EaseSplit</span>
-            </div>
-
-
-            <div className="flex items-center gap-6 mr-10">
-                <button onClick={onlogin} className="text-blue-600 hover:underline">Log in</button>
-                <button onClick={onsignup} className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-md shadow hover:bg-blue-700 transition-all">
-                    Sign up
-                </button>
-            </div>
-        </div>
-    );
+  return (
+    <div className="h-full px-4 sm:px-8 flex items-center justify-between bg-white">
+      <div className="flex items-center gap-2 sm:gap-3 sm:ml-10">
+        <img
+          src={FullLogo || "/placeholder.svg"}
+          alt="Logo"
+          className="w-8 h-8 sm:w-10 sm:h-10 rounded-sm object-contain"
+        />
+        <span className="text-lg sm:text-2xl font-semibold text-blue-800">EaseSplit</span>
+      </div>
+      <div className="flex items-center gap-2 sm:gap-6 sm:mr-10">
+        <button onClick={onlogin} className="text-blue-600 hover:underline text-sm sm:text-base">
+          Log in
+        </button>
+        <button
+          onClick={onsignup}
+          className="bg-blue-600 text-white font-semibold px-3 py-1.5 sm:px-4 sm:py-2 rounded-md shadow hover:bg-blue-700 transition-all text-sm sm:text-base"
+        >
+          Sign up
+        </button>
+      </div>
+    </div>
+  )
 }
+
 
 function Body({ onsignup }) {
 
