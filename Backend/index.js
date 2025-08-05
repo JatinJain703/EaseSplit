@@ -13,7 +13,7 @@ const EMAIL = process.env.EMAIL;
 const { generateotp, transporter } = require("./functions.js");
 const nodemailer = require("nodemailer");
 const cors = require("cors");
-
+const PORT = process.env.PORT || 3000;
 mongoose.connect(mongourl);
 app.use(express.json());
 app.use(cors());
@@ -800,4 +800,4 @@ app.get("/Friends",async(req,res)=>{
 })
 
 
-app.listen(3000);
+app.listen(PORT);
