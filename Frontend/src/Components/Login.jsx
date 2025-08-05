@@ -5,7 +5,7 @@ import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import axios from "axios";
 import { otpgeneratedAtom,otpAtom} from "../atoms/atom";
-import { Otp } from "./otp";
+import { Otp } from "./OTP";
 import { useNavigate } from "react-router-dom";
 export function Login() {
    const setsignup=useSetRecoilState(signupAtom);
