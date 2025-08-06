@@ -496,7 +496,7 @@ app.post("/CreatefriendsSettlement", async (req, res) => {
 
         let friendindex = user.friends.findIndex(f => f.userId.toString() === friendid.toString());
         if (friendindex != -1) {
-            user.friends[friendindex].personalBalance -= amount;
+            user.friends[friendindex].personalBalance += amount;
         }
 
         const friend = await UserModel.findOne({
@@ -505,7 +505,7 @@ app.post("/CreatefriendsSettlement", async (req, res) => {
 
         let userindex = friend.friends.findIndex(f => f.userId.toString() === userid.toString());
         if (userindex != -1) {
-            friend.friends[userindex].personalBalance += amount;
+            friend.friends[userindex].personalBalance -= amount;
         }
 
         await user.save();
