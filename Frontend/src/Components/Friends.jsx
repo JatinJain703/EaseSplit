@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
@@ -15,6 +15,10 @@ export function Friends() {
   const fetchFriends=usegetFriends();
   const [showAddfriend, setshowAddfriend] = useState(false);
   const navigate = useNavigate();
+  
+  useEffect(()=>{
+        fetchFriends();
+      },[])
 
   async function handleAddfriend(Friend) {
   try {
@@ -70,12 +74,12 @@ export function Friends() {
                         <div className="text-sm text-gray-600 mt-1">
                           {friend.personalBalance > 0 ? (
                             <span>
-                              You owe <span className="font-semibold text-red-500">₹{friend.personalBalance}</span> to{" "}
+                              You lent <span className="font-semibold text-red-500">₹{friend.personalBalance}</span> to{" "}
                               {friend.name}
                             </span>
                           ) : (
                             <span>
-                              You lent{" "}
+                              You owe{" "}
                               <span className="font-semibold text-green-500">₹{Math.abs(friend.personalBalance)}</span>{" "}
                               to {friend.name}
                             </span>

@@ -150,11 +150,11 @@ export function Mainpage() {
                     <div className="text-sm text-gray-600 mt-1">
                       {friend.personalBalance > 0 ? (
                         <>
-                          You owe ₹{friend.personalBalance} to {friend.name}
+                          You lent ₹{friend.personalBalance} to {friend.name}
                         </>
                       ) : (
                         <>
-                          You lent ₹{Math.abs(friend.personalBalance)} to {friend.name}
+                          You owe ₹{Math.abs(friend.personalBalance)} to {friend.name}
                         </>
                       )}
                     </div>

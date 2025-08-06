@@ -6,6 +6,7 @@ import { AddExpense } from "./AddExpense";
 import { Settleup } from "./Settleup";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { TailSpin } from "react-loader-spinner";
 
 export function GroupDetail() {
   const location = useLocation();
@@ -16,6 +17,8 @@ export function GroupDetail() {
   const [showExpenseBox, setShowExpenseBox] = useState(false);
   const [showSettleup, setshowSettleup] = useState(false);
   const navigate = useNavigate();
+  const [loading, setloading] = useState(true);
+
   async function fetchgroupinfo() {
     try {
       const response = await axios.get("https://easesplit.onrender.com/GroupInfo", {
@@ -35,6 +38,7 @@ export function GroupDetail() {
     const data = await fetchgroupinfo();
     setmembers(data.members);
     setbalances(data.balances);
+    setloading(false);
   }
 
   useEffect(() => {
@@ -93,75 +97,85 @@ export function GroupDetail() {
               </button>
             </div>
           </div>
+          {loading ? <div className="flex justify-center items-center flex-grow bg-white">
+            <TailSpin
+              height={80}
+              width={80}
+              color="#3b82f6"
+              ariaLabel="loading-spinner"
+              radius="0.5"
+              visible={true}
+            />
+          </div> :
 
+            <div className="flex-grow flex flex-col px-6 py-8 overflow-auto relative">
 
-          <div className="flex-grow flex flex-col px-6 py-8 overflow-auto relative">
-
-            <div className="absolute top-3 right-2 w-32 z-10">
-              <div className="bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
-                <button
-                  onClick={() => setShowMembers(!showMembers)}
-                  className="flex items-center justify-between w-full text-left p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <span className="text-xs font-semibold text-gray-800">Members ({members.length})</span>
-                  <svg
-                    className={`w-3 h-3 text-gray-600 transition-transform ${showMembers ? "rotate-180" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              <div className="absolute top-3 right-2 w-32 z-10">
+                <div className="bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
+                  <button
+                    onClick={() => setShowMembers(!showMembers)}
+                    className="flex items-center justify-between w-full text-left p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                    <span className="text-xs font-semibold text-gray-800">Members ({members.length})</span>
+                    <svg
+                      className={`w-3 h-3 text-gray-600 transition-transform ${showMembers ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
 
-                {showMembers && (
-                  <div className="px-2 pb-2 space-y-1 max-h-32 overflow-y-auto">
-                    {members.map((member) => (
-                      <div
-                        key={member.id}
-                        className="bg-white px-2 py-1 border border-gray-200 rounded text-xs text-gray-700 truncate"
-                        title={member.name}
-                      >
-                        {member.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  {showMembers && (
+                    <div className="px-2 pb-2 space-y-1 max-h-32 overflow-y-auto">
+                      {members.map((member) => (
+                        <div
+                          key={member.id}
+                          className="bg-white px-2 py-1 border border-gray-200 rounded text-xs text-gray-700 truncate"
+                          title={member.name}
+                        >
+                          {member.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+
+              {balances.length > 0 ? (
+                <div className="space-y-4 mb-6 ">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-2">Group Balances</h2>
+                  {balances.map((balance, index) => (
+                    <div key={index} className="bg-white p-4 rounded-xl shadow border border-gray-200 text-left">
+                      <span className="text-gray-700">
+                        <span className="font-semibold text-blue-800">{balance.from.name}</span> owes{" "}
+                        <span className="font-semibold text-red-600">₹{balance.amount}</span> to{" "}
+                        <span className="font-semibold text-blue-800">{balance.to.name}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-green-600 font-semibold text-xl text-center mb-6 mt-10">
+                  This group is all settled up! 🎉
+                </div>
+              )}
+
+
+              <div className="text-center mt-auto">
+                <button
+                  onClick={() => navigate(`/group/${group.Gname}/transactions`, {
+                    state: {
+                      group,
+                      members,
+                    }
+                  })}
+                  className="text-blue-600 hover:underline text-sm font-medium">See all transactions</button>
               </div>
             </div>
-
-
-            {balances.length > 0 ? (
-              <div className="space-y-4 mb-6 ">
-                <h2 className="text-lg font-semibold text-gray-800 mb-2">Group Balances</h2>
-                {balances.map((balance, index) => (
-                  <div key={index} className="bg-white p-4 rounded-xl shadow border border-gray-200 text-left">
-                    <span className="text-gray-700">
-                      <span className="font-semibold text-blue-800">{balance.from.name}</span> owes{" "}
-                      <span className="font-semibold text-red-600">₹{balance.amount}</span> to{" "}
-                      <span className="font-semibold text-blue-800">{balance.to.name}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-green-600 font-semibold text-xl text-center mb-6 mt-10">
-                This group is all settled up! 🎉
-              </div>
-            )}
-
-
-            <div className="text-center mt-auto">
-              <button
-                onClick={() => navigate(`/group/${group.Gname}/transactions`, {
-                  state: {
-                    group,
-                    members,
-                  }
-                })}
-                className="text-blue-600 hover:underline text-sm font-medium">See all transactions</button>
-            </div>
-          </div>
+          }
         </div>
       </main>
 

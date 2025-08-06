@@ -99,13 +99,13 @@ export function FriendDetail() {
                 You're all settled up with <span className="font-bold">{friend.name}</span>!
               </p>
             ) : friend.personalBalance > 0 ? (
-              <p className="text-red-600 font-semibold text-xl text-center">
-                You owe <span className="font-bold">₹{friend.personalBalance}</span> to{" "}
+              <p className="text-green-600 font-semibold text-xl text-center">
+                You lent <span className="font-bold">₹{friend.personalBalance}</span> to{" "}
                 <span className="font-bold">{friend.name}</span>.
               </p>
             ) : (
-              <p className="text-green-600 font-semibold text-xl text-center">
-                You lent <span className="font-bold">₹{Math.abs(friend.personalBalance)}</span> to{" "}
+              <p className="text-red-600 font-semibold text-xl text-center">
+                You owe <span className="font-bold">₹{Math.abs(friend.personalBalance)}</span> to{" "}
                 <span className="font-bold">{friend.name}</span>.
               </p>
             )}
