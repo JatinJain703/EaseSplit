@@ -10,10 +10,11 @@ const mongourl = process.env.mongourl;
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_SECRET2 = process.env.JWT_SECRET2;
 const EMAIL = process.env.EMAIL;
-const { generateotp, transporter } = require("./functions.js");
-const nodemailer = require("nodemailer");
+const { generateotp } = require("./functions.js");
 const cors = require("cors");
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
+const {Resend}=require("resend");
+const resend = new Resend(process.env.RESEND_API_KEY);
 mongoose.connect(mongourl);
 app.use(express.json());
 app.use(cors());
@@ -137,7 +138,7 @@ app.post("/login", async (req, res) => {
         };
 
         try {
-            await transporter.sendMail(mailOptions);
+            await resend.emails.send(mailOptions);
             res.send({
                 message: "otp has been sent to your mail",
                 token: otptoken
