@@ -104,53 +104,13 @@ app.post("/login", async (req, res) => {
 
     const passmatch = bcrypt.compare(password, user.password);
     if (passmatch) {
-        const otp = generateotp();
-        try {
-            const old = await OTPModel.findOne({
+        const token = jwt.sign({
                 id: user._id
-            })
-            if (old) {
-                old.otp = otp;
-                old.createdAt = Date.now();
-                await old.save();
-            }
-            else {
-                await OTPModel.create({
-                    id: user._id,
-                    otp: otp
-                })
-            }
-        } catch (e) {
-            res.status(500).send({
-                message: "Server Error"
-            })
-            return;
-        }
-        const otptoken = jwt.sign({
-            userid: user._id,
-        }, JWT_SECRET2, { expiresIn: "10m" });
+            }, JWT_SECRET);
 
-        let mailOptions = {
-            from: EMAIL,
-            to: email,
-            subject: 'Your OTP Code',
-            text: `Your OTP is ${otp}`
-        };
-
-        try {
-            await resend.emails.send(mailOptions);
-            res.send({
-                message: "otp has been sent to your mail",
-                token: otptoken
+            res.status(200).send({
+                token: token
             });
-        }
-        catch (e) {
-            console.log(e);
-            res.status(500).send({
-                message: "Backend error"
-            });
-            return;
-        }
     }
     else {
         res.status(403).send({
@@ -403,6 +363,9 @@ app.post("/CreatefriendsExpense", async (req, res) => {
 })
 
 app.post("/CreategroupExpense", async (req, res) => {
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
     const userid = req.body.userid;
     const groupid = req.body.groupid;
     const paidby = req.body.paidby;
@@ -475,10 +438,15 @@ app.post("/CreategroupExpense", async (req, res) => {
             description: description,
             splitBetween: splitBetween
         });
+         
+        await session.commitTransaction();
+        session.endSession();
 
         res.status(200).json({ message: "Group expense added successfully" });
 
     } catch (e) {
+        await session.abortTransaction();
+        session.endSession();
         console.error(e);
         res.status(500).send({ message: "Backend error" });
     }
