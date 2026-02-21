@@ -13,7 +13,7 @@ const EMAIL = process.env.EMAIL;
 const { generateotp } = require("./functions.js");
 const cors = require("cors");
 const PORT = 3000;
-const {Resend}=require("resend");
+const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 mongoose.connect(mongourl);
 app.use(express.json());
@@ -105,12 +105,12 @@ app.post("/login", async (req, res) => {
     const passmatch = bcrypt.compare(password, user.password);
     if (passmatch) {
         const token = jwt.sign({
-                id: user._id
-            }, JWT_SECRET);
+            id: user._id
+        }, JWT_SECRET);
 
-            res.status(200).send({
-                token: token
-            });
+        res.status(200).send({
+            token: token
+        });
     }
     else {
         res.status(403).send({
@@ -304,7 +304,7 @@ app.post("/CreateFriend", async (req, res) => {
         }
         res.status(200).json({
             message: "Friend added successfully",
-            friendid:friend._id
+            friendid: friend._id
         });
     }
     catch (e) {
@@ -375,7 +375,7 @@ app.post("/CreategroupExpense", async (req, res) => {
     const splitBetween = req.body.splitBetween;
 
     try {
-        const group = await GroupModel.findById(groupid);
+        const group = await GroupModel.findById(groupid).session(session);;
         if (!group) {
             return res.status(404).json({ message: "Group not found" });
         }
@@ -428,17 +428,17 @@ app.post("/CreategroupExpense", async (req, res) => {
             }
         }
 
-        await group.save();
+        await group.save({ session });
 
-        await ExpenseModel.create({
+        await ExpenseModel.create([{
             createdby: userid,
             groupId: groupid,
             paidBy: paidby,
             amount: amount,
             description: description,
             splitBetween: splitBetween
-        });
-         
+        }], { session });
+
         await session.commitTransaction();
         session.endSession();
 
@@ -724,35 +724,35 @@ app.get("/Friendtransac", async (req, res) => {
     }
 })
 
-app.get("/Usertransac",async(req,res)=>{
-    const userid=req.headers.userid;
-     try{
-    const expenses=await ExpenseModel.find({
-        createdby:userid
-    }).sort({date:-1}).lean();
+app.get("/Usertransac", async (req, res) => {
+    const userid = req.headers.userid;
+    try {
+        const expenses = await ExpenseModel.find({
+            createdby: userid
+        }).sort({ date: -1 }).lean();
 
-    const settlements=await SettlementModel.find({
-        from:userid
-    }).sort({date:-1}).lean();
+        const settlements = await SettlementModel.find({
+            from: userid
+        }).sort({ date: -1 }).lean();
 
-     res.status(200).json({
+        res.status(200).json({
             expenses,
             settlements
         })
-    }catch (err) {
+    } catch (err) {
         res.status(500).send({
             message: "Server error", err
         })
     }
 })
 
-app.get("/Friends",async(req,res)=>{
-    const userid=req.headers.userid;
-    try{
-        const user=await UserModel.findById(userid);
-        if(!user)
-            res.status(400).send({message:"user does not exist"});
-        const AllFriends=user.friends;
+app.get("/Friends", async (req, res) => {
+    const userid = req.headers.userid;
+    try {
+        const user = await UserModel.findById(userid);
+        if (!user)
+            res.status(400).send({ message: "user does not exist" });
+        const AllFriends = user.friends;
         const Unsettled = AllFriends.filter(friend => friend.personalBalance !== 0).reverse();
         const Settled = AllFriends.filter(friend => friend.personalBalance === 0).reverse();
         res.status(200).send({
@@ -760,10 +760,9 @@ app.get("/Friends",async(req,res)=>{
             Unsettled,
             Settled
         })
-    }catch(err)
-    {
+    } catch (err) {
         res.status(500).send({
-            message:"Server error",err
+            message: "Server error", err
         })
     }
 })
