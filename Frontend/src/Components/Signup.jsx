@@ -1,5 +1,5 @@
-import { signup as signupAtom ,authSelector} from "../atoms/atom";
-import { useSetRecoilState,useRecoilRefresher_UNSTABLE } from "recoil";
+import { signup as signupAtom, authSelector } from "../atoms/atom";
+import { useSetRecoilState, useRecoilRefresher_UNSTABLE } from "recoil";
 import { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
@@ -12,7 +12,7 @@ export function Signup() {
     const [password, setpassword] = useState("");
     const [agreed, setAgreed] = useState(false);
     const refreshAuth = useRecoilRefresher_UNSTABLE(authSelector);
-    const navigate=useNavigate();
+    const navigate = useNavigate();
     async function handlesubmit(e) {
         e.preventDefault();
 
@@ -33,27 +33,27 @@ export function Signup() {
 
 
         try {
-    const response = await axios.post("https://easesplit.onrender.com/signup", {
-      name,
-      email,
-      password
-    });
+            const response = await axios.post("https://easesplit.onrender.com/signup", {
+                name,
+                email,
+                password
+            });
 
-    
-    if (response.data.token) {
-      localStorage.setItem("token", response.data.token); 
-      toast.success("Signup successful!");
-      refreshAuth();
-      navigate("/Dashboard");
-    } else if (response.data.message) {
-      toast.error(response.data.message);
-    } else {
-      toast.error("Unexpected response from server.");
-    }
-  } catch (error) {
-    
-    toast.error(error.response?.data?.message || "Signup failed!");
-  }
+
+            if (response.data.token) {
+                localStorage.setItem("token", response.data.token);
+                toast.success("Signup successful!");
+                refreshAuth();
+                navigate("/Dashboard");
+            } else if (response.data.message) {
+                toast.error(response.data.message);
+            } else {
+                toast.error("Unexpected response from server.");
+            }
+        } catch (error) {
+
+            toast.error(error.response?.data?.message || "Signup failed!");
+        }
 
 
     }
@@ -108,14 +108,6 @@ export function Signup() {
                         alt="Google"
                     />
                     Google
-                </button>
-                <button className="flex-1 border border-gray-300 rounded-xl py-2 flex items-center justify-center gap-2">
-                    <img
-                        src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRCvh-j7HsTHJ8ZckknAoiZMx9VcFmsFkv72g&s"
-                        className="h-5 w-5"
-                        alt="Apple"
-                    />
-                    Apple
                 </button>
             </div>
 
