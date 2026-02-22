@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const bcrypt = require("bcrypt");
-const { z } = require("zod");
+const { z, promise } = require("zod");
 const jwt = require("jsonwebtoken");
 const { UserModel, OTPModel, GroupModel, ExpenseModel, SettlementModel } = require("./db.js");
 require('dotenv').config();
@@ -315,254 +315,360 @@ app.post("/CreateFriend", async (req, res) => {
 })
 
 app.post("/CreatefriendsExpense", async (req, res) => {
-    const userid = req.body.userid;
-    const paidby = req.body.paidby;
-    let amount = req.body.amount;
-    amount = parseInt(amount);
-    const description = req.body.description;
-    const splitBetween = req.body.splitBetween;
 
-    try {
-        const paiduser = await UserModel.findOne({
-            _id: paidby
-        })
-        for (let i = 0; i < splitBetween.length; i++) {
-            if (paidby != splitBetween[i].userId) {
-                const current = await UserModel.findOne({
-                    _id: splitBetween[i].userId
-                })
-                const friendIndex = paiduser.friends.findIndex(f =>
-                    f.userId.toString() === splitBetween[i].userId.toString()
-                );
-                paiduser.friends[friendIndex].personalBalance += splitBetween[i].share;
-                await paiduser.save();
+    for (let attempt = 0; attempt < 3; attempt++) {
 
-                const paiduserIndex = current.friends.findIndex(f =>
-                    f.userId.toString() === paiduser._id.toString()
-                );
-                current.friends[paiduserIndex].personalBalance -= splitBetween[i].share;
-                await current.save();
+        const session = await mongoose.startSession();
+
+        try {
+            session.startTransaction();
+
+            const { userid, paidby, description, splitBetween } = req.body;
+            let amount = parseInt(req.body.amount);
+
+            const paiduser = await UserModel.findById(paidby).session(session);
+            if (!paiduser) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ message: "Paid user not found" });
             }
+
+            for (let i = 0; i < splitBetween.length; i++) {
+
+                if (paidby != splitBetween[i].userId) {
+
+                    const current = await UserModel
+                        .findById(splitBetween[i].userId)
+                        .session(session);
+
+                    const share = parseInt(splitBetween[i].share);
+
+                    const friendIndex = paiduser.friends.findIndex(f =>
+                        f.userId.toString() === splitBetween[i].userId.toString()
+                    );
+
+                    paiduser.friends[friendIndex].personalBalance += share;
+
+                    const paiduserIndex = current.friends.findIndex(f =>
+                        f.userId.toString() === paidby.toString()
+                    );
+
+                    current.friends[paiduserIndex].personalBalance -= share;
+
+                    await current.save({ session });
+                }
+            }
+
+            await paiduser.save({ session });
+
+            await ExpenseModel.create([{
+                createdby: userid,
+                groupId: null,
+                paidBy: paidby,
+                amount,
+                description,
+                splitBetween
+            }], { session });
+
+            await session.commitTransaction();
+            session.endSession();
+
+            return res.status(200).json({
+                message: "Expense created successfully"
+            });
+
+        } catch (e) {
+
+            await session.abortTransaction();
+            session.endSession();
+
+            if (e.code === 112 && attempt < 2) {
+                continue; // retry
+            }
+
+            console.error(e);
+            return res.status(500).json({
+                message: "Backend error"
+            });
         }
-        await ExpenseModel.create({
-            createdby: userid,
-            groupId: null,
-            paidBy: paidby,
-            amount: amount,
-            description: description,
-            splitBetween: splitBetween
-        })
-        res.status(200).send({
-            message: "Expense created successfully"
-        })
-    } catch (e) {
-        res.status(500).send({
-            message: "Backend error"
-        })
     }
-})
+
+    return res.status(500).json({
+        message: "Too much concurrency, try again"
+    });
+});
 
 app.post("/CreategroupExpense", async (req, res) => {
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    const userid = req.body.userid;
-    const groupid = req.body.groupid;
-    const paidby = req.body.paidby;
-    let amount = req.body.amount;
-    amount = parseInt(amount);
-    const description = req.body.description;
-    const splitBetween = req.body.splitBetween;
-
-    try {
-        const group = await GroupModel.findById(groupid).session(session);;
-        if (!group) {
-            return res.status(404).json({ message: "Group not found" });
-        }
-
-        for (let i = 0; i < splitBetween.length; i++) {
-            const memberId = splitBetween[i].userId;
-            const share = splitBetween[i].share;
-
-            if (memberId === paidby) continue;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const session = await mongoose.startSession();
+        try {
+            session.startTransaction();
+            const userid = req.body.userid;
+            const groupid = req.body.groupid;
+            const paidby = req.body.paidby;
+            let amount = req.body.amount;
+            amount = parseInt(amount);
+            const description = req.body.description;
+            const splitBetween = req.body.splitBetween;
 
 
-            let existingIndex = group.balances.findIndex(b =>
-                b.from.toString() === memberId.toString() && b.to.toString() === paidby.toString()
-            );
+            const group = await GroupModel.findById(groupid).session(session);;
+            if (!group) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ message: "Group not found" });
+            }
 
-            if (existingIndex !== -1) {
+            for (let i = 0; i < splitBetween.length; i++) {
+                const memberId = splitBetween[i].userId;
+                const share = parseInt(splitBetween[i].share);
 
-                group.balances[existingIndex].amount += share;
-            } else {
+                if (memberId === paidby) continue;
 
-                let reverseIndex = group.balances.findIndex(b =>
-                    b.from.toString() === paidby.toString() && b.to.toString() === memberId.toString()
+
+                let existingIndex = group.balances.findIndex(b =>
+                    b.from.toString() === memberId.toString() && b.to.toString() === paidby.toString()
                 );
 
-                if (reverseIndex !== -1) {
-                    let existingAmount = group.balances[reverseIndex].amount;
+                if (existingIndex !== -1) {
 
-                    if (existingAmount > share) {
-                        group.balances[reverseIndex].amount -= share;
-                    } else if (existingAmount < share) {
+                    group.balances[existingIndex].amount += share;
+                } else {
 
-                        group.balances.splice(reverseIndex, 1);
+                    let reverseIndex = group.balances.findIndex(b =>
+                        b.from.toString() === paidby.toString() && b.to.toString() === memberId.toString()
+                    );
+
+                    if (reverseIndex !== -1) {
+                        let existingAmount = group.balances[reverseIndex].amount;
+
+                        if (existingAmount > share) {
+                            group.balances[reverseIndex].amount -= share;
+                        } else if (existingAmount < share) {
+
+                            group.balances.splice(reverseIndex, 1);
+                            group.balances.push({
+                                from: memberId,
+                                to: paidby,
+                                amount: share - existingAmount
+                            });
+                        } else {
+
+                            group.balances.splice(reverseIndex, 1);
+                        }
+                    } else {
+
                         group.balances.push({
                             from: memberId,
                             to: paidby,
-                            amount: share - existingAmount
+                            amount: share
                         });
-                    } else {
-
-                        group.balances.splice(reverseIndex, 1);
                     }
-                } else {
-
-                    group.balances.push({
-                        from: memberId,
-                        to: paidby,
-                        amount: share
-                    });
                 }
             }
+
+            await group.save({ session });
+
+            await ExpenseModel.create([{
+                createdby: userid,
+                groupId: groupid,
+                paidBy: paidby,
+                amount: amount,
+                description: description,
+                splitBetween: splitBetween
+            }], { session });
+
+            await session.commitTransaction();
+            session.endSession();
+
+            return res.status(200).json({ message: "Group expense added successfully" });
+
+        } catch (e) {
+            await session.abortTransaction();
+            session.endSession();
+            if (e.code === 112 && attempt < 2) {
+                continue;
+            }
+
+            console.error(e);
+            return res.status(500).send({ message: "Backend error" });
         }
-
-        await group.save({ session });
-
-        await ExpenseModel.create([{
-            createdby: userid,
-            groupId: groupid,
-            paidBy: paidby,
-            amount: amount,
-            description: description,
-            splitBetween: splitBetween
-        }], { session });
-
-        await session.commitTransaction();
-        session.endSession();
-
-        res.status(200).json({ message: "Group expense added successfully" });
-
-    } catch (e) {
-        await session.abortTransaction();
-        session.endSession();
-        console.error(e);
-        res.status(500).send({ message: "Backend error" });
     }
+    return res.status(500).json({ message: "Too much concurrency, try again" });
 });
 
 app.post("/CreatefriendsSettlement", async (req, res) => {
-    const userid = req.body.userid;
-    const friendid = req.body.friendid;
-    let amount = req.body.amount;
-    amount = parseInt(amount);
 
-    try {
-        const user = await UserModel.findOne({
-            _id: userid
-        })
+    for (let attempt = 0; attempt < 3; attempt++) {
 
-        let friendindex = user.friends.findIndex(f => f.userId.toString() === friendid.toString());
-        if (friendindex != -1) {
-            user.friends[friendindex].personalBalance += amount;
+        const session = await mongoose.startSession();
+
+        try {
+            session.startTransaction();
+
+            const { userid, friendid } = req.body;
+            let amount = parseInt(req.body.amount);
+
+            if (!amount || amount <= 0) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({ message: "Invalid amount" });
+            }
+
+            const user = await UserModel.findById(userid).session(session);
+            const friend = await UserModel.findById(friendid).session(session);
+
+            if (!user || !friend) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ message: "User not found" });
+            }
+
+            let friendIndex = user.friends.findIndex(
+                f => f.userId.toString() === friendid.toString()
+            );
+
+            if (friendIndex !== -1) {
+                user.friends[friendIndex].personalBalance += amount;
+            }
+
+            let userIndex = friend.friends.findIndex(
+                f => f.userId.toString() === userid.toString()
+            );
+
+            if (userIndex !== -1) {
+                friend.friends[userIndex].personalBalance -= amount;
+            }
+
+            await user.save({ session });
+            await friend.save({ session });
+
+            await SettlementModel.create([{
+                groupId: null,
+                from: userid,
+                to: friendid,
+                amount
+            }], { session });
+
+            await session.commitTransaction();
+            session.endSession();
+
+            return res.status(200).json({
+                message: "Settlement created successfully"
+            });
+
+        } catch (e) {
+
+            await session.abortTransaction();
+            session.endSession();
+
+            if (e.code === 112 && attempt < 2) {
+                continue; // retry
+            }
+
+            console.error(e);
+            return res.status(500).json({
+                message: "Backend error"
+            });
         }
-
-        const friend = await UserModel.findOne({
-            _id: friendid
-        })
-
-        let userindex = friend.friends.findIndex(f => f.userId.toString() === userid.toString());
-        if (userindex != -1) {
-            friend.friends[userindex].personalBalance -= amount;
-        }
-
-        await user.save();
-        await friend.save();
-
-        await SettlementModel.create({
-            groupId: null,
-            from: userid,
-            to: friendid,
-            amount: amount
-        })
-
-        res.status(200).send({
-            message: "Settlement created successfully"
-        })
-    } catch (e) {
-        res.status(500).send({
-            message: "Backend error"
-        })
     }
-})
+
+    return res.status(500).json({
+        message: "Too much concurrency, try again"
+    });
+});
 
 app.post("/CreategroupSettlement", async (req, res) => {
-    const userid = req.body.userid;
-    const groupid = req.body.groupid;
-    const friendid = req.body.friendid;
-    let amount = req.body.amount;
-    amount = parseInt(amount);
 
-    try {
-        const group = await GroupModel.findOne({
-            _id: groupid
-        })
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const session = await mongoose.startSession();
+        try {
+            session.startTransaction();
+            const userid = req.body.userid;
+            const groupid = req.body.groupid;
+            const friendid = req.body.friendid;
+            let amount = req.body.amount;
+            amount = parseInt(amount);
 
-        let existingIndex = group.balances.findIndex(b =>
-            b.from.toString() === userid.toString() && b.to.toString() === friendid.toString()
-        );
-        if (existingIndex != -1) {
-            if (group.balances[existingIndex].amount > amount) {
-                group.balances[existingIndex].amount -= amount;
+
+            const group = await GroupModel.findById(groupid).session(session);
+
+            if (!group) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ message: "Group not found" });
             }
 
-            else if (group.balances[existingIndex].amount < amount) {
-                let existingamount = group.balances[existingIndex].amount;
-                group.balances.splice(existingIndex, 1);
-                group.balances.push({
-                    from: friendid,
-                    to: userid,
-                    amount: amount - existingamount
-                });
+            let existingIndex = group.balances.findIndex(b =>
+                b.from.toString() === userid.toString() && b.to.toString() === friendid.toString()
+            );
+            if (existingIndex != -1) {
+                if (group.balances[existingIndex].amount > amount) {
+                    group.balances[existingIndex].amount -= amount;
+                }
+
+                else if (group.balances[existingIndex].amount < amount) {
+                    let existingamount = group.balances[existingIndex].amount;
+                    group.balances.splice(existingIndex, 1);
+                    group.balances.push({
+                        from: friendid,
+                        to: userid,
+                        amount: amount - existingamount
+                    });
+                }
+                else {
+                    group.balances.splice(existingIndex, 1);
+                }
             }
             else {
-                group.balances.splice(existingIndex, 1);
+                let reverseIndex = group.balances.findIndex(b =>
+                    b.from.toString() === friendid.toString() && b.to.toString() === userid.toString()
+                );
+                if (reverseIndex !== -1) {
+                    group.balances[reverseIndex].amount += amount;
+                } else {
+                    group.balances.push({
+                        from: friendid,
+                        to: userid,
+                        amount: amount
+                    });
+                }
             }
-        }
-        else {
-            let reverseIndex = group.balances.findIndex(b =>
-                b.from.toString() === friendid.toString() && b.to.toString() === userid.toString()
-            );
-            if (reverseIndex !== -1) {
-                group.balances[reverseIndex].amount += amount;
-            } else {
-                group.balances.push({
-                    from: friendid,
-                    to: userid,
-                    amount: amount
-                });
+
+            await group.save({ session });
+
+            await SettlementModel.create([{
+                groupId: groupid,
+                from: userid,
+                to: friendid,
+                amount
+            }], { session });
+
+            await session.commitTransaction();
+            session.endSession();
+
+            return res.status(200).send({
+                message: "Settlement created successfully"
+            })
+        } catch (e) {
+            await session.abortTransaction();
+            session.endSession();
+
+            if (e.code === 112 && attempt < 2) {
+                continue; // retry
             }
+
+            console.error(e);
+            return res.status(500).json({
+                message: "Backend error"
+            });
         }
-
-        await group.save();
-        await SettlementModel.create({
-            groupId: groupid,
-            from: userid,
-            to: friendid,
-            amount: amount
-        })
-
-        res.status(200).send({
-            message: "Settlement created successfully"
-        })
-    } catch (e) {
-        res.status(500).send({
-            message: "Backend error"
-        })
     }
-})
-
+    return res.status(500).json({
+        message: "Too much concurrency, try again"
+    })
+});
 app.get("/auth", (req, res) => {
     const authHeader = req.headers.authorization;
 
