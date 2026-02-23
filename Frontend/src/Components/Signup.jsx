@@ -5,6 +5,7 @@ import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 export function Signup() {
     const setsignup = useSetRecoilState(signupAtom);
     const [name, setname] = useState("");
@@ -101,14 +102,27 @@ export function Signup() {
 
             <div className="my-4 text-center text-gray-400">Or with</div>
             <div className="flex gap-4">
-                <button className="flex-1 border border-gray-300 rounded-xl py-2 flex items-center justify-center gap-2">
-                    <img
-                        src="https://www.svgrepo.com/show/355037/google.svg"
-                        className="h-5 w-5"
-                        alt="Google"
+                <div className="flex-1 border border-gray-300 rounded-xl py-2 flex items-center justify-center gap-2">
+                    <GoogleLogin
+                        onSuccess={async (credentialResponse) => {
+
+                            const res = await axios.post(
+                                "https://easesplit.onrender.com/oauth/google",
+                                {
+                                    token: credentialResponse.credential,
+                                }
+                            );
+
+                            localStorage.setItem("token", res.data.token);
+                            refreshAuth();
+                            navigate("/Dashboard");
+                        }}
+                        onError={() => {
+                            console.log("Login Failed");
+                        }}
                     />
-                    Google
-                </button>
+
+                </div>
             </div>
 
             <div className="mt-6 text-sm text-center text-gray-500">

@@ -4,10 +4,15 @@ import './index.css'
 import App from './App.jsx'
 import { RecoilRoot } from 'recoil'
 import { BrowserRouter } from 'react-router-dom'
+import { GoogleOAuthProvider } from "@react-oauth/google";
+require('dotenv').config();
+
 createRoot(document.getElementById('root')).render(
   <RecoilRoot>
   <BrowserRouter>
+  <GoogleOAuthProvider clientId={process.env.GOOGLE_CLIENT_ID}>
     <App />
+  </GoogleOAuthProvider>
   </BrowserRouter>
   </RecoilRoot>
 )
