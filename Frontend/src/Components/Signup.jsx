@@ -105,7 +105,7 @@ export function Signup() {
             <div className="flex justify-center">
                 <GoogleLogin
                     onSuccess={async (credentialResponse) => {
-
+                     try {
                         const res = await axios.post(
                             "https://easesplit.onrender.com/oauth/google",
                             {
@@ -116,6 +116,9 @@ export function Signup() {
                         localStorage.setItem("token", res.data.token);
                         refreshAuth();
                         navigate("/Dashboard");
+                    } catch (error) {
+                        toast.error(error.response?.data?.message || "Google Signup failed!");  
+                    }
                     }}
                     onError={() => {
                         console.log("Login Failed");

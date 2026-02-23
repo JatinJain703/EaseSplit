@@ -108,7 +108,7 @@ export function Login() {
       <div className="flex justify-center">
         <GoogleLogin
           onSuccess={async (credentialResponse) => {
-
+          try {
             const res = await axios.post(
               "https://easesplit.onrender.com/oauth/google",
               {
@@ -119,6 +119,9 @@ export function Login() {
             localStorage.setItem("token", res.data.token);
             refreshAuth();
             navigate("/Dashboard");
+          } catch (error) {
+            toast.error(error.response?.data?.message || "Google Login failed!");
+          }
           }}
           onError={() => {
             console.log("Login Failed");
