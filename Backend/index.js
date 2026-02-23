@@ -12,9 +12,10 @@ const JWT_SECRET2 = process.env.JWT_SECRET2;
 const EMAIL = process.env.EMAIL;
 const { generateotp } = require("./functions.js");
 const cors = require("cors");
+const { OAuth2Client } = require("google-auth-library");
+GOOGLE_CLIENT_ID=process.env.GOOGLE_CLIENT_ID;
+const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const PORT = 3000;
-const { Resend } = require("resend");
-const resend = new Resend(process.env.RESEND_API_KEY);
 mongoose.connect(mongourl);
 app.use(express.json());
 app.use(cors());
@@ -101,6 +102,12 @@ app.post("/login", async (req, res) => {
         })
         return;
     }
+    
+    if(user.provider!=="local"){
+        return res.status(400).json({
+            message: "This account was created using a third-party provider"
+        })
+    }
 
     const passmatch = bcrypt.compare(password, user.password);
     if (passmatch) {
@@ -117,6 +124,52 @@ app.post("/login", async (req, res) => {
             message: "Incorrect Credentials"
         });
     }
+})
+
+app.post("/oauth/google", async (req, res) => {
+    try {
+    const { token } = req.body;
+
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    const { name, email, sub } = payload;
+
+    
+    let user = await UserModel.findOne({ email });
+
+    if (!user) {
+      user = await UserModel.create({
+        name,
+        email,
+        password: null,
+        provider: "google",
+        providerId: sub,
+      });
+    }
+
+    if (user.provider === "local") {
+      return res.status(400).json({
+        message: "Please login using email and password",
+      });
+    }
+
+    const myToken = jwt.sign(
+      { id: user._id },
+        JWT_SECRET
+    );
+
+    res.json({
+      token: myToken
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: "Google login failed" });
+  }
 })
 
 app.post("/otp", async (req, res) => {

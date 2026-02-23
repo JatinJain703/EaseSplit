@@ -6,6 +6,8 @@ const User = new schema({
     name: String,
     email: { type: String, unique: true },
     password: String,
+    provider: { type: String, default: "local" },
+    providerId: String,
     isdummy:{type:Boolean,default:false},
     friends: [
         {
