@@ -103,29 +103,29 @@ export function Login() {
 
       </form>
 
-      <div className="my-4 text-center text-gray-400">Or with</div>
-      <div className="flex gap-4">
-        <div className="flex-1 border border-gray-300 rounded-xl py-2 flex items-center justify-center gap-2">
-          <GoogleLogin
-            onSuccess={async (credentialResponse) => {
+      <div className="my-4 text-center text-gray-400">Or continue with</div>
 
-              const res = await axios.post(
-                "https://easesplit.onrender.com/oauth/google",
-                {
-                  token: credentialResponse.credential,
-                }
-              );
+      <div className="flex justify-center">
+        <GoogleLogin
+          onSuccess={async (credentialResponse) => {
 
-              localStorage.setItem("token", res.data.token);
-               refreshAuth();
-              navigate("/Dashboard");
-            }}
-            onError={() => {
-              console.log("Login Failed");
-            }}
-          />
-        </div>
+            const res = await axios.post(
+              "https://easesplit.onrender.com/oauth/google",
+              {
+                token: credentialResponse.credential,
+              }
+            );
+
+            localStorage.setItem("token", res.data.token);
+            refreshAuth();
+            navigate("/Dashboard");
+          }}
+          onError={() => {
+            console.log("Login Failed");
+          }}
+        />
       </div>
+
 
       <div className="mt-6 text-sm text-center text-gray-500">
         <span>Dont have an account? </span>
